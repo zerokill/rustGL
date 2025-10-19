@@ -28,23 +28,29 @@ In Rust:
 
 ## Task
 
-### 1. Install Rust
+### 1. Verify Rust Installation
 
-If you haven't already, install Rust using rustup:
+Since you already have Rust installed, verify it's working:
 
+```bash
+rustc --version
+cargo --version
+```
+
+You should see something like:
+```
+rustc 1.XX.X (...)
+cargo 1.XX.X (...)
+```
+
+If not installed, use rustup:
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
-Follow the installation prompts. After installation, verify it worked:
+### 2. Write Your First Program (The Old Way)
 
-```bash
-rustc --version
-```
-
-You should see something like `rustc 1.XX.X (...)`.
-
-### 2. Write Your First Program
+**Note:** This step uses `rustc` directly just to show you how compilation works. In Step 2, you'll learn to use **Cargo** (Rust's build tool), which is what you'll use for all real projects.
 
 Create a file called `hello.rs` with the following content:
 
@@ -112,11 +118,12 @@ Once you've got the basic version working, try these modifications:
 
 ## Next Step
 
-Once your program runs successfully and you're comfortable with the basics, you're ready for [Step 02: Cargo Project](./step-02-cargo-project.md), where you'll learn about Rust's project management tool!
+Once your program runs successfully and you're comfortable with the basics, you're ready for [Step 02: Cargo Project](./step-02-cargo-project.md), where you'll learn about **Cargo** - Rust's build tool and package manager. This is what you'll use for all real development!
 
 ## Notes
 
 - Don't worry if Rust syntax looks unfamiliar - you'll learn as you go
 - The `!` in `println!` means it's a macro, not a regular function
 - Rust files use the `.rs` extension
-- We're compiling directly with `rustc` for learning purposes, but real projects use Cargo (next step!)
+- **Important:** We're compiling directly with `rustc` only to show you how it works. Real Rust development **always uses Cargo** (next step!)
+- Think of this like running `gcc` directly vs using `make` or CMake

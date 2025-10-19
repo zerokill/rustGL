@@ -6,7 +6,7 @@
 
 ## Goal
 
-Create a proper Rust project using Cargo, Rust's build system and package manager.
+Create a proper Rust project using Cargo, Rust's build system and package manager. This is how **all real Rust development** is done!
 
 ## What You'll Learn
 
@@ -46,9 +46,12 @@ You should see something like `cargo 1.XX.X (...)`.
 
 ### 2. Create a New Project
 
-Navigate to where you want to create your RustGL project (probably the parent directory of this `docs` folder), then create a new project:
+**Recommended structure:** Keep your Rust project separate from the documentation.
+
+From the repository root (where the `docs/` folder is), create your Rust project:
 
 ```bash
+# You should be in the repository root (claudeGL3/ or similar)
 cargo new rustgl
 cd rustgl
 ```
@@ -57,10 +60,22 @@ This creates a directory structure:
 
 ```
 rustgl/
-├── Cargo.toml      # Project configuration (like package.json)
+├── Cargo.toml      # Project manifest (dependencies, metadata)
 ├── src/
-│   └── main.rs     # Your main source file
-└── .gitignore      # Git ignore file
+│   └── main.rs     # Your entry point
+└── .gitignore      # Automatically created
+```
+
+**Your repository will now look like:**
+```
+claudeGL3/              # (or whatever you named it)
+├── docs/               # Learning materials
+│   └── ...
+├── rustgl/             # Your Rust project ← You'll work here
+│   ├── Cargo.toml
+│   └── src/
+│       └── main.rs
+└── README.md
 ```
 
 ### 3. Examine Cargo.toml
@@ -161,7 +176,11 @@ Now that you have a proper Rust project, you're ready for [Step 03: Dependencies
 
 ## Notes
 
+- **Always use Cargo for Rust projects** - never compile with `rustc` directly in real development
 - Always use `cargo run` for development (it's faster than building then running)
 - Use `cargo build --release` only when you need maximum performance
 - The `Cargo.lock` file should be committed to git for applications (but not for libraries)
-- Cargo automatically manages the `target/` directory - you can delete it anytime
+- Cargo automatically manages the `target/` directory - you can delete it anytime and rebuild
+- Use `cargo check` for fast compile-checking without producing a binary
+- Use `cargo fmt` to format your code (install with `rustup component add rustfmt`)
+- Use `cargo clippy` for linting (install with `rustup component add clippy`)

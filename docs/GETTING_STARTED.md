@@ -120,34 +120,39 @@ You'll learn everything you need along the way!
 
 ## Project Structure
 
-Your final project will look like this:
+**Repository layout (recommended):**
 
 ```
-rustgl/
-├── docs/                    # Learning materials (this repo!)
-│   ├── phase-01-foundation/
-│   ├── phase-02-core-rendering/
-│   ├── phase-03-appearance/
-│   ├── phase-04-advanced-effects/
-│   ├── phase-05-procedural/
-│   ├── phase-06-optimization/
-│   ├── phase-07-volumetric/
-│   └── phase-08-polish/
-├── src/                     # Your Rust source code
-│   ├── main.rs
-│   ├── mesh.rs
-│   ├── camera.rs
-│   ├── shader.rs
-│   └── ...
-├── shaders/                 # GLSL shader files
-│   ├── vertex.glsl
-│   ├── fragment.glsl
-│   └── ...
-├── resources/               # Textures and assets
-│   ├── textures/
-│   └── skybox/
-└── Cargo.toml              # Rust dependencies
+rustgl/                      # Repository root
+├── docs/                    # Learning materials
+│   ├── README.md
+│   ├── GETTING_STARTED.md
+│   ├── PROJECT_STRUCTURE.md # Code organization guide
+│   ├── ROADMAP.md
+│   └── phase-XX-*/          # Step-by-step guides
+│
+├── rustgl/                  # Your Rust project (Cargo package)
+│   ├── Cargo.toml           # Package manifest
+│   ├── src/                 # Rust source code
+│   │   ├── main.rs          # Entry point
+│   │   ├── lib.rs           # (Optional) Library code
+│   │   ├── graphics/        # Graphics subsystem
+│   │   ├── scene/           # Scene management
+│   │   └── ...              # More modules as you progress
+│   ├── shaders/             # GLSL shader files
+│   │   ├── basic.vert
+│   │   └── basic.frag
+│   ├── resources/           # Assets
+│   │   ├── textures/
+│   │   └── skybox/
+│   └── target/              # Build artifacts (git-ignored)
+│
+└── README.md                # Repository overview
 ```
+
+**Key point:** Your Rust code lives in the `rustgl/` subdirectory, keeping it separate from documentation.
+
+See [PROJECT_STRUCTURE.md](./PROJECT_STRUCTURE.md) for detailed organization guidance that evolves as you progress!
 
 ## Getting Help
 
