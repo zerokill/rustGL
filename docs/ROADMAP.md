@@ -2,6 +2,9 @@
 
 This document outlines the complete learning path for building the RustGL game engine. Each step builds on the previous ones, gradually increasing in complexity.
 
+**Target Platform:** Linux (OpenGL 4.5+) with cross-platform compatibility where possible.
+**Note:** macOS is limited to OpenGL 4.1; advanced features in later phases require Linux or Windows.
+
 ## Progress Tracking
 
 - [ ] Phase 1: Foundation

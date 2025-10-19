@@ -53,11 +53,29 @@ fn main() {
     let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS)
         .expect("Failed to initialize GLFW");
 
-    // Request OpenGL 3.3 Core Profile
-    glfw.window_hint(glfw::WindowHint::ContextVersion(3, 3));
-    glfw.window_hint(glfw::WindowHint::OpenGlProfile(glfw::OpenGlProfileHint::Core));
+    // Request OpenGL 4.5 Core Profile for Linux
+    // Note: For initial learning steps, we'll start with 3.3 for compatibility
+    // Later steps will upgrade to 4.5+ for advanced features
+    #[cfg(target_os = "linux")]
+    {
+        glfw.window_hint(glfw::WindowHint::ContextVersion(4, 5));
+        glfw.window_hint(glfw::WindowHint::OpenGlProfile(glfw::OpenGlProfileHint::Core));
+    }
+
+    // macOS limited to OpenGL 4.1 maximum
     #[cfg(target_os = "macos")]
-    glfw.window_hint(glfw::WindowHint::OpenGlForwardCompat(true));
+    {
+        glfw.window_hint(glfw::WindowHint::ContextVersion(4, 1));
+        glfw.window_hint(glfw::WindowHint::OpenGlProfile(glfw::OpenGlProfileHint::Core));
+        glfw.window_hint(glfw::WindowHint::OpenGlForwardCompat(true));
+    }
+
+    // Windows - request OpenGL 4.5
+    #[cfg(target_os = "windows")]
+    {
+        glfw.window_hint(glfw::WindowHint::ContextVersion(4, 5));
+        glfw.window_hint(glfw::WindowHint::OpenGlProfile(glfw::OpenGlProfileHint::Core));
+    }
 
     let (mut window, events) = glfw
         .create_window(800, 600, "RustGL - OpenGL Context", glfw::WindowMode::Windowed)
@@ -151,12 +169,14 @@ You should see a dark blue window! The OpenGL version should be printed to the c
 
 **OpenGL Version Hints:**
 ```rust
-glfw.window_hint(glfw::WindowHint::ContextVersion(3, 3));
-glfw.window_hint(glfw::WindowHint::OpenGlProfile(glfw::OpenGlProfileHint::Core));
+#[cfg(target_os = "linux")]
+glfw.window_hint(glfw::WindowHint::ContextVersion(4, 5));
 ```
-- Requests OpenGL 3.3 Core Profile
+- On Linux, we request OpenGL 4.5 Core Profile for maximum feature access
 - Core profile = modern OpenGL (no deprecated features)
-- SwiftGL uses OpenGL 3.3, so we'll match that
+- macOS is limited to OpenGL 4.1 (legacy limitation by Apple)
+- We use conditional compilation (`#[cfg(target_os = "...")]`) for portability
+- Later steps will use OpenGL 4.x features like compute shaders and tessellation
 
 **Loading Function Pointers:**
 ```rust
@@ -262,17 +282,25 @@ glfw::WindowEvent::FramebufferSize(width, height) => {
 - Check that `gl::load_with` was called after `make_current`
 
 **"failed to load symbol"**
-- Your system might not support OpenGL 3.3
-- Try OpenGL 3.0 or 2.1 instead
-- Run `glxinfo | grep OpenGL` (Linux) to check supported version
+- Your system might not support the requested OpenGL version
+- On Linux, check your driver: `glxinfo | grep "OpenGL version"`
+- On Linux, ensure you have proper GPU drivers installed (nvidia, mesa, amd)
+- Try lowering the version (e.g., 4.3 instead of 4.5) if needed
 
 **Crash on startup**
 - Make sure you load OpenGL functions AFTER creating the window
 - Check that you're calling `window.make_current()` before `gl::load_with`
 
+**Linux-specific issues**
+- Ensure you have the correct GPU drivers installed
+- For NVIDIA: install proprietary drivers via your package manager
+- For AMD/Intel: mesa drivers should work (`sudo apt install mesa-utils`)
+- Verify with: `glxinfo | grep "OpenGL version"` (should show 4.5 or higher)
+
 **macOS-specific issues**
 - Make sure you have the forward compatibility hint: `OpenGlForwardCompat(true)`
-- macOS only supports up to OpenGL 4.1
+- macOS only supports up to OpenGL 4.1 (Apple limitation)
+- Advanced features in later steps won't work on macOS
 
 ## Next Step
 
@@ -281,7 +309,9 @@ Fantastic! You now have OpenGL initialized and can clear the screen. Next: [Step
 ## Notes
 
 - OpenGL is a state machine - functions change global state
-- We're using OpenGL 3.3 Core to match SwiftGL
+- We're targeting OpenGL 4.5 on Linux for advanced features
 - All rendering happens between `Clear` and `swap_buffers`
 - The framebuffer has two buffers: front (displayed) and back (drawing)
 - `swap_buffers` swaps them (double buffering prevents flicker)
+- **Platform portability**: We use `#[cfg(target_os = "...")]` to request the highest OpenGL version each platform supports
+- Linux will give us access to compute shaders, tessellation, and other OpenGL 4.x features

@@ -49,19 +49,31 @@ glfw = "0.54"
 
 ### 2. Install GLFW System Library
 
+**Linux (Ubuntu/Debian):**
+```bash
+sudo apt-get install libglfw3-dev
+```
+
+**Linux (Fedora):**
+```bash
+sudo dnf install glfw-devel
+```
+
+**Linux (Arch):**
+```bash
+sudo pacman -S glfw-x11
+```
+
 **macOS:**
 ```bash
 brew install glfw
 ```
 
-**Ubuntu/Debian:**
-```bash
-sudo apt-get install libglfw3-dev
-```
-
 **Windows:**
 - Download from [glfw.org](https://www.glfw.org/download.html)
 - Or use `vcpkg`: `vcpkg install glfw3`
+
+**Note:** This project targets **Linux** as the primary platform for OpenGL 4.x support. macOS is limited to OpenGL 4.1.
 
 ### 3. Create Your Window
 

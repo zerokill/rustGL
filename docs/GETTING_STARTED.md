@@ -45,7 +45,7 @@ This is a **learn-by-doing** project. Here's how it works:
 By the end of this journey, you'll have created a complete 3D game engine with:
 
 **Graphics Features:**
-- Modern OpenGL rendering pipeline
+- Modern OpenGL 4.x rendering pipeline
 - Mesh rendering (spheres, cubes, terrain)
 - Texture mapping
 - Phong lighting
@@ -53,6 +53,7 @@ By the end of this journey, you'll have created a complete 3D game engine with:
 - Water with reflections and refractions
 - Volumetric clouds
 - Transparency and blending
+- Advanced OpenGL 4.x features (compute shaders, tessellation, etc.)
 
 **Procedural Generation:**
 - Perlin noise implementation
@@ -90,7 +91,7 @@ By the end of this journey, you'll have created a complete 3D game engine with:
 ## Prerequisites
 
 **Required:**
-- A computer (macOS, Linux, or Windows)
+- A Linux-based system (Ubuntu, Fedora, Arch, etc.) or macOS/Windows
 - Willingness to learn
 - Basic programming knowledge (any language)
 
@@ -101,13 +102,16 @@ By the end of this journey, you'll have created a complete 3D game engine with:
 
 You'll learn everything you need along the way!
 
+**Platform Note:** This project is designed for **Linux-first development** and targets **OpenGL 4.x** for access to advanced features not available on macOS (which is limited to OpenGL 4.1). While the early steps will work on macOS, later advanced features require a Linux environment or Windows with modern GPU drivers.
+
 ## Development Environment
 
 **You'll need:**
 1. **Rust** - Installed via rustup
-2. **GLFW** - System library for windowing
-3. **A text editor** - VS Code, Vim, Emacs, etc.
-4. **Terminal** - For running cargo commands
+2. **GLFW** - System library for windowing (or alternatively, X11/Wayland development libraries)
+3. **OpenGL 4.x capable GPU** - Check with `glxinfo | grep "OpenGL version"` on Linux
+4. **A text editor** - VS Code, Vim, Emacs, etc.
+5. **Terminal** - For running cargo commands
 
 **Recommended VS Code extensions:**
 - rust-analyzer (Rust language support)

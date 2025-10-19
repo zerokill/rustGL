@@ -136,7 +136,8 @@ For each step:
 By the end, your RustGL engine will have:
 
 **Graphics:**
-- Modern OpenGL 3.3+ rendering
+- Modern OpenGL 4.5 rendering (Linux/Windows)
+- OpenGL 4.1 compatible code paths (macOS)
 - Mesh rendering (spheres, cubes, pyramids, terrain)
 - Texture mapping and materials
 - Phong lighting with multiple lights
@@ -145,6 +146,7 @@ By the end, your RustGL engine will have:
 - Normal mapping
 - Volumetric clouds with raymarching
 - Transparency and alpha blending
+- Advanced OpenGL 4.x features (compute shaders, tessellation)
 
 **Procedural Generation:**
 - 2D and 3D Perlin noise implementation
