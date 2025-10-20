@@ -1,4 +1,5 @@
 extern crate glfw;
+extern crate gl;
 
 use glfw::{Action, Context, Key};
 use std::time::Instant;
@@ -6,6 +7,23 @@ use std::time::Instant;
 fn main() {
     // Initialize GLFW
     let mut glfw = glfw::init_no_callbacks().expect("Failed to initialize GLFW");
+
+    // Request OpenGL 4.5 Core Profile for Linux
+    // Note: For initial learning steps, we'll start with 3.3 for compatibility
+    // Later steps will upgrade to 4.5+ for advanced features
+    #[cfg(target_os = "linux")]
+    {
+        glfw.window_hint(glfw::WindowHint::ContextVersion(4, 5));
+        glfw.window_hint(glfw::WindowHint::OpenGlProfile(glfw::OpenGlProfileHint::Core));
+    }
+
+    // macOS limited to OpenGL 4.1 maximum
+    #[cfg(target_os = "macos")]
+    {
+        glfw.window_hint(glfw::WindowHint::ContextVersion(4, 1));
+        glfw.window_hint(glfw::WindowHint::OpenGlProfile(glfw::OpenGlProfileHint::Core));
+        glfw.window_hint(glfw::WindowHint::OpenGlForwardCompat(true));
+    }
 
     // Create a window
     let (mut window, events) = glfw
@@ -17,15 +35,23 @@ fn main() {
         )
         .expect("Failed to create GLFW window");
 
-    // Make the window's context current
     window.make_current();
-
-    // Enable key event polling
     window.set_key_polling(true);
+    window.set_framebuffer_size_polling(true);
+
+    // Load OpenGL function pointers
+    gl::load_with(|symbol| window.get_proc_address(symbol) as *const _);
+
+    // Print OpenGL version info
+    unsafe {
+        let version = std::ffi::CStr::from_ptr(gl::GetString(gl::VERSION) as *const i8);
+        println!("OpenGL Version: {}", version.to_str().unwrap());
+    }
 
     let mut last_frame = Instant::now();
     let mut frame_count = 0;
     let mut fps_timer = Instant::now();
+    let mut time = 0.0f32;
 
     // Window loop - keep the window open
     while !window.should_close() {
@@ -42,16 +68,13 @@ fn main() {
                 delta_time * 1000.0
             );
             window.set_title(&title);
-
             frame_count = 0;
             fps_timer = Instant::now();
         }
 
         process_events(&mut window, &events);
-
-        update(delta_time);
-
-        render(&mut window);
+        update(delta_time, &mut time);
+        render(&mut window, &time);
     }
 }
 
@@ -61,22 +84,47 @@ fn process_events(
 ) {
     window.glfw.poll_events();
     for (_, event) in glfw::flush_messages(events) {
-        match event {
-            glfw::WindowEvent::Key(Key::Escape, _, Action::Press, _) => {
-                window.set_should_close(true);
+        handle_window_event(window, event);
+    }
+}
+
+fn handle_window_event(window: &mut glfw::Window, event: glfw::WindowEvent) {
+    match event {
+        glfw::WindowEvent::Key(Key::Escape, _, Action::Press, _) => {
+            window.set_should_close(true);
+        }
+        glfw::WindowEvent::Key(Key::Space, _, Action::Press, _) => {
+            println!("Space pressed!");
+        }
+        glfw::WindowEvent::FramebufferSize(width, height) => {
+            unsafe {
+                gl::Viewport(0, 0, width, height);
             }
-            glfw::WindowEvent::Key(Key::Space, _, Action::Press, _) => {
-                println!("Space pressed!");
-            }
-            _ => {}
+        }
+        _ => {}
+    }
+}
+
+fn check_gl_error(location: &str) {
+    unsafe {
+        let err = gl::GetError();
+        if err != gl::NO_ERROR {
+            println!("OpenGL Error at {}: {}", location, err);
         }
     }
 }
 
-fn update(delta_time: f32) {
+fn update(delta_time: f32, time: &mut f32) {
     // Game logic
+    *time += delta_time;
 }
 
-fn render(window: &mut glfw::Window) {
+fn render(window: &mut glfw::Window, time: &f32) {
+    unsafe {
+        let r = (time.sin() + 1.0) / 2.0;
+        gl::ClearColor(r, 0.1, 0.2, 1.0);
+        gl::Clear(gl::COLOR_BUFFER_BIT);
+        check_gl_error("clear");
+    }
     window.swap_buffers();
 }
