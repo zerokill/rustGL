@@ -89,7 +89,7 @@ fn main() {
 }
 
 fn process_events(window: &mut glfw::Window, events: &glfw::GlfwReceiver<(f64, glfw::WindowEvent)>) {
-    window.glfw.poll_events();
+    window.glfw.poll_events();  // Access glfw through the window
     for (_, event) in glfw::flush_messages(events) {
         match event {
             glfw::WindowEvent::Key(Key::Escape, _, Action::Press, _) => {
@@ -103,7 +103,7 @@ fn process_events(window: &mut glfw::Window, events: &glfw::GlfwReceiver<(f64, g
     }
 }
 
-fn update(delta_time: f32) {
+fn update(_delta_time: f32) {
     // Game logic will go here
     // delta_time tells us how much time has passed since the last frame
     // This allows for smooth, framerate-independent movement
@@ -115,11 +115,9 @@ fn render(window: &mut glfw::Window) {
 }
 ```
 
-Wait, this won't compile! Let's fix it:
+### 2. Understanding the Code
 
-### 2. Fix the Borrow Checker Error
-
-The problem is that `process_events` needs access to `glfw` to poll events, but we only have the window. We need to refactor:
+**Key point:** The glfw-rs crate allows you to access the `Glfw` instance through `window.glfw`, which is why this works!
 
 ```rust
 extern crate glfw;
@@ -128,7 +126,7 @@ use glfw::{Action, Context, Key};
 use std::time::Instant;
 
 fn main() {
-    let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS)
+    let mut glfw = glfw::init_no_callbacks()
         .expect("Failed to initialize GLFW");
 
     let (mut window, events) = glfw
@@ -155,10 +153,7 @@ fn main() {
         }
 
         // Process events
-        glfw.poll_events();
-        for (_, event) in glfw::flush_messages(&events) {
-            handle_window_event(&mut window, event);
-        }
+        process_events(&mut window, &events);
 
         // Update game state
         update(delta_time);
@@ -168,15 +163,18 @@ fn main() {
     }
 }
 
-fn handle_window_event(window: &mut glfw::Window, event: glfw::WindowEvent) {
-    match event {
-        glfw::WindowEvent::Key(Key::Escape, _, Action::Press, _) => {
-            window.set_should_close(true);
+fn process_events(window: &mut glfw::Window, events: &glfw::GlfwReceiver<(f64, glfw::WindowEvent)>) {
+    window.glfw.poll_events();  // Access glfw through the window
+    for (_, event) in glfw::flush_messages(events) {
+        match event {
+            glfw::WindowEvent::Key(Key::Escape, _, Action::Press, _) => {
+                window.set_should_close(true);
+            }
+            glfw::WindowEvent::Key(Key::Space, _, Action::Press, _) => {
+                println!("Space pressed!");
+            }
+            _ => {}
         }
-        glfw::WindowEvent::Key(Key::Space, _, Action::Press, _) => {
-            println!("Space pressed!");
-        }
-        _ => {}
     }
 }
 
