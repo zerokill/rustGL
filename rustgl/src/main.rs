@@ -35,7 +35,14 @@ fn main() {
 
         frame_count += 1;
         if fps_timer.elapsed().as_secs() >= 1 {
-            println!("FPS: {} | Frame time: {:.2}ms", frame_count, delta_time * 1000.0);
+            // Update window title with FPS
+            let title = format!(
+                "RustGL by mau | FPS: {} | Frame time: {:.2}ms",
+                frame_count,
+                delta_time * 1000.0
+            );
+            window.set_title(&title);
+
             frame_count = 0;
             fps_timer = Instant::now();
         }
@@ -48,7 +55,10 @@ fn main() {
     }
 }
 
-fn process_events(window: &mut glfw::Window, events: &glfw::GlfwReceiver<(f64, glfw::WindowEvent)>) {
+fn process_events(
+    window: &mut glfw::Window,
+    events: &glfw::GlfwReceiver<(f64, glfw::WindowEvent)>,
+) {
     window.glfw.poll_events();
     for (_, event) in glfw::flush_messages(events) {
         match event {
@@ -68,6 +78,5 @@ fn update(delta_time: f32) {
 }
 
 fn render(window: &mut glfw::Window) {
-
     window.swap_buffers();
 }
