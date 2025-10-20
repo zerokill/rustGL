@@ -1,8 +1,10 @@
 # Rust
 /target/
+rustgl/target/
 **/*.rs.bk
 *.pdb
-Cargo.lock
+# Cargo.lock should be committed for binaries (rustgl is a binary)
+# rustgl/Cargo.lock
 
 # IDE
 .vscode/
