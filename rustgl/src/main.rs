@@ -52,13 +52,12 @@ fn main() {
         println!("OpenGL Version: {}", version.to_str().unwrap());
     }
 
-
     // At the top of main(), after loading OpenGL:
     let vertices: [f32; 9] = [
         // x     y      z
-        -0.5, -0.5,  0.0,  // Bottom left
-         0.5, -0.5,  0.0,  // Bottom right
-         0.0,  0.5,  0.0,  // Top center
+        -0.5, -0.5, 0.0, // Bottom left
+        0.5, -0.5, 0.0, // Bottom right
+        0.0, 0.5, 0.0, // Top center
     ];
 
     const VERTEX_SHADER_SOURCE: &str = r#"
@@ -210,7 +209,12 @@ fn compile_shader(source: &str, shader_type: gl::types::GLenum) -> u32 {
             let mut len = 0;
             gl::GetShaderiv(shader, gl::INFO_LOG_LENGTH, &mut len);
             let mut buffer = vec![0u8; len as usize];
-            gl::GetShaderInfoLog(shader, len, std::ptr::null_mut(), buffer.as_mut_ptr() as *mut i8);
+            gl::GetShaderInfoLog(
+                shader,
+                len,
+                std::ptr::null_mut(),
+                buffer.as_mut_ptr() as *mut i8,
+            );
             panic!(
                 "Shader compilation failed: {}",
                 String::from_utf8_lossy(&buffer)
@@ -238,8 +242,16 @@ fn create_shader_program(vertex_src: &str, fragment_src: &str) -> u32 {
             let mut len = 0;
             gl::GetProgramiv(program, gl::INFO_LOG_LENGTH, &mut len);
             let mut buffer = vec![0u8; len as usize];
-            gl::GetProgramInfoLog(program, len, std::ptr::null_mut(), buffer.as_mut_ptr() as *mut i8);
-            panic!("Program linking failed: {}", String::from_utf8_lossy(&buffer));
+            gl::GetProgramInfoLog(
+                program,
+                len,
+                std::ptr::null_mut(),
+                buffer.as_mut_ptr() as *mut i8,
+            );
+            panic!(
+                "Program linking failed: {}",
+                String::from_utf8_lossy(&buffer)
+            );
         }
 
         gl::DeleteShader(vertex_shader);
