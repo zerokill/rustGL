@@ -1,5 +1,5 @@
-extern crate glfw;
 extern crate gl;
+extern crate glfw;
 
 use glfw::{Action, Context, Key};
 use std::time::Instant;
@@ -14,14 +14,18 @@ fn main() {
     #[cfg(target_os = "linux")]
     {
         glfw.window_hint(glfw::WindowHint::ContextVersion(4, 5));
-        glfw.window_hint(glfw::WindowHint::OpenGlProfile(glfw::OpenGlProfileHint::Core));
+        glfw.window_hint(glfw::WindowHint::OpenGlProfile(
+            glfw::OpenGlProfileHint::Core,
+        ));
     }
 
     // macOS limited to OpenGL 4.1 maximum
     #[cfg(target_os = "macos")]
     {
         glfw.window_hint(glfw::WindowHint::ContextVersion(4, 1));
-        glfw.window_hint(glfw::WindowHint::OpenGlProfile(glfw::OpenGlProfileHint::Core));
+        glfw.window_hint(glfw::WindowHint::OpenGlProfile(
+            glfw::OpenGlProfileHint::Core,
+        ));
         glfw.window_hint(glfw::WindowHint::OpenGlForwardCompat(true));
     }
 
@@ -96,11 +100,9 @@ fn handle_window_event(window: &mut glfw::Window, event: glfw::WindowEvent) {
         glfw::WindowEvent::Key(Key::Space, _, Action::Press, _) => {
             println!("Space pressed!");
         }
-        glfw::WindowEvent::FramebufferSize(width, height) => {
-            unsafe {
-                gl::Viewport(0, 0, width, height);
-            }
-        }
+        glfw::WindowEvent::FramebufferSize(width, height) => unsafe {
+            gl::Viewport(0, 0, width, height);
+        },
         _ => {}
     }
 }
