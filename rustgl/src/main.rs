@@ -52,6 +52,66 @@ fn main() {
         println!("OpenGL Version: {}", version.to_str().unwrap());
     }
 
+
+    // At the top of main(), after loading OpenGL:
+    let vertices: [f32; 9] = [
+        // x     y      z
+        -0.5, -0.5,  0.0,  // Bottom left
+         0.5, -0.5,  0.0,  // Bottom right
+         0.0,  0.5,  0.0,  // Top center
+    ];
+
+    const VERTEX_SHADER_SOURCE: &str = r#"
+        #version 330 core
+        layout (location = 0) in vec3 aPos;
+
+        void main() {
+            gl_Position = vec4(aPos, 1.0);
+        }
+    "#;
+
+    const FRAGMENT_SHADER_SOURCE: &str = r#"
+        #version 330 core
+        out vec4 FragColor;
+
+        void main() {
+            FragColor = vec4(1.0, 0.5, 0.2, 1.0);  // Orange color
+        }
+    "#;
+
+    let (vao, vbo) = unsafe {
+        let mut vao = 0;
+        gl::GenVertexArrays(1, &mut vao);
+        gl::BindVertexArray(vao);
+
+        let mut vbo = 0;
+        gl::GenBuffers(1, &mut vbo);
+        gl::BindBuffer(gl::ARRAY_BUFFER, vbo);
+        gl::BufferData(
+            gl::ARRAY_BUFFER,
+            (vertices.len() * std::mem::size_of::<f32>()) as isize,
+            vertices.as_ptr() as *const _,
+            gl::STATIC_DRAW,
+        );
+
+        gl::VertexAttribPointer(
+            0,
+            3,
+            gl::FLOAT,
+            gl::FALSE,
+            (3 * std::mem::size_of::<f32>()) as i32,
+            std::ptr::null(),
+        );
+        gl::EnableVertexAttribArray(0);
+
+        gl::BindBuffer(gl::ARRAY_BUFFER, 0);
+        gl::BindVertexArray(0);
+
+        (vao, vbo)
+    };
+
+    let shader_program = create_shader_program(VERTEX_SHADER_SOURCE, FRAGMENT_SHADER_SOURCE);
+
     let mut last_frame = Instant::now();
     let mut frame_count = 0;
     let mut fps_timer = Instant::now();
@@ -78,7 +138,7 @@ fn main() {
 
         process_events(&mut window, &events);
         update(delta_time, &mut time);
-        render(&mut window, &time);
+        render(&mut window, vao, shader_program);
     }
 }
 
@@ -121,12 +181,70 @@ fn update(delta_time: f32, time: &mut f32) {
     *time += delta_time;
 }
 
-fn render(window: &mut glfw::Window, time: &f32) {
+fn render(window: &mut glfw::Window, vao: u32, shader_program: u32) {
     unsafe {
-        let r = (time.sin() + 1.0) / 2.0;
-        gl::ClearColor(r, 0.1, 0.2, 1.0);
+        gl::ClearColor(0.1, 0.1, 0.2, 1.0);
         gl::Clear(gl::COLOR_BUFFER_BIT);
         check_gl_error("clear");
+
+        gl::UseProgram(shader_program);
+
+        gl::BindVertexArray(vao);
+        gl::DrawArrays(gl::TRIANGLES, 0, 3);
+        gl::BindVertexArray(0);
     }
     window.swap_buffers();
+}
+
+fn compile_shader(source: &str, shader_type: gl::types::GLenum) -> u32 {
+    unsafe {
+        let shader = gl::CreateShader(shader_type);
+        let c_str = std::ffi::CString::new(source.as_bytes()).unwrap();
+        gl::ShaderSource(shader, 1, &c_str.as_ptr(), std::ptr::null());
+        gl::CompileShader(shader);
+
+        // Check for compilation errors
+        let mut success = 0;
+        gl::GetShaderiv(shader, gl::COMPILE_STATUS, &mut success);
+        if success == 0 {
+            let mut len = 0;
+            gl::GetShaderiv(shader, gl::INFO_LOG_LENGTH, &mut len);
+            let mut buffer = vec![0u8; len as usize];
+            gl::GetShaderInfoLog(shader, len, std::ptr::null_mut(), buffer.as_mut_ptr() as *mut i8);
+            panic!(
+                "Shader compilation failed: {}",
+                String::from_utf8_lossy(&buffer)
+            );
+        }
+
+        shader
+    }
+}
+
+fn create_shader_program(vertex_src: &str, fragment_src: &str) -> u32 {
+    unsafe {
+        let vertex_shader = compile_shader(vertex_src, gl::VERTEX_SHADER);
+        let fragment_shader = compile_shader(fragment_src, gl::FRAGMENT_SHADER);
+
+        let program = gl::CreateProgram();
+        gl::AttachShader(program, vertex_shader);
+        gl::AttachShader(program, fragment_shader);
+        gl::LinkProgram(program);
+
+        // Check for linking errors
+        let mut success = 0;
+        gl::GetProgramiv(program, gl::LINK_STATUS, &mut success);
+        if success == 0 {
+            let mut len = 0;
+            gl::GetProgramiv(program, gl::INFO_LOG_LENGTH, &mut len);
+            let mut buffer = vec![0u8; len as usize];
+            gl::GetProgramInfoLog(program, len, std::ptr::null_mut(), buffer.as_mut_ptr() as *mut i8);
+            panic!("Program linking failed: {}", String::from_utf8_lossy(&buffer));
+        }
+
+        gl::DeleteShader(vertex_shader);
+        gl::DeleteShader(fragment_shader);
+
+        program
+    }
 }
