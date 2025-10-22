@@ -2,10 +2,12 @@ extern crate gl;
 extern crate glfw;
 
 mod shader;
+mod mesh;
 
 use glfw::{Action, Context, Key};
 use std::time::Instant;
 use shader::Shader;
+use mesh::{Mesh, Vertex};
 
 fn main() {
     // Initialize GLFW
@@ -55,53 +57,19 @@ fn main() {
         println!("OpenGL Version: {}", version.to_str().unwrap());
     }
 
-    let vertices: [f32; 18] = [
-        // positions        // colors
-        -0.5, -0.5, 0.0,   1.0, 0.0, 0.0,  // Bottom left (red)
-         0.5, -0.5, 0.0,   0.0, 1.0, 0.0,  // Bottom right (green)
-         0.0,  0.5, 0.0,   0.0, 0.0, 1.0,  // Top center (blue)
+    let triangle_vertices = vec![
+        Vertex::new([-0.5, -0.5, 0.0,], [   1.0, 0.0, 0.0, ]), // Bottom left (red)
+        Vertex::new([0.5, -0.5, 0.0, ], [  0.0, 1.0, 0.0,  ]),// Bottom right (green)
+        Vertex::new([0.0,  0.5, 0.0, ], [  0.0, 0.0, 1.0,  ]),// Top center (blue)
     ];
+    let triangle = Mesh::new(&triangle_vertices);
 
-    let (vao, vbo) = unsafe {
-        let mut vao = 0;
-        gl::GenVertexArrays(1, &mut vao);
-        gl::BindVertexArray(vao);
-
-        let mut vbo = 0;
-        gl::GenBuffers(1, &mut vbo);
-        gl::BindBuffer(gl::ARRAY_BUFFER, vbo);
-        gl::BufferData(
-            gl::ARRAY_BUFFER,
-            (vertices.len() * std::mem::size_of::<f32>()) as isize,
-            vertices.as_ptr() as *const _,
-            gl::STATIC_DRAW,
-        );
-
-        gl::VertexAttribPointer(
-            0,
-            3,
-            gl::FLOAT,
-            gl::FALSE,
-            (6 * std::mem::size_of::<f32>()) as i32,
-            std::ptr::null(),
-        );
-        gl::EnableVertexAttribArray(0);
-
-        gl::VertexAttribPointer(
-            1,
-            3,
-            gl::FLOAT,
-            gl::FALSE,
-            (6 * std::mem::size_of::<f32>()) as i32,
-            (3 * std::mem::size_of::<f32>()) as *const std::ffi::c_void,
-        );
-        gl::EnableVertexAttribArray(1);
-
-        gl::BindBuffer(gl::ARRAY_BUFFER, 0);
-        gl::BindVertexArray(0);
-
-        (vao, vbo)
-    };
+    let triangle2_vertices = vec![
+        Vertex::new([0.1, -0.5, 0.0], [1.0, 1.0, 0.0]),   // Bottom left (yellow)
+        Vertex::new([1.1, -0.5, 0.0], [0.0, 1.0, 1.0]),   // Bottom right (cyan)
+        Vertex::new([0.6, 0.5, 0.0], [1.0, 0.0, 1.0]),    // Top center (magenta)
+    ];
+    let triangle2 = Mesh::new(&triangle2_vertices);
 
     let shader = Shader::new("shader/basic.vert", "shader/basic.frag");
 
@@ -131,7 +99,7 @@ fn main() {
 
         process_events(&mut window, &events);
         update(delta_time, &mut time);
-        render(&mut window, vao, &shader);
+        render(&mut window, &triangle, &triangle2, &shader);
     }
 }
 
@@ -174,17 +142,15 @@ fn update(delta_time: f32, time: &mut f32) {
     *time += delta_time;
 }
 
-fn render(window: &mut glfw::Window, vao: u32, shader: &Shader) {
+fn render(window: &mut glfw::Window, triangle: &Mesh, triangle2: &Mesh, shader: &Shader) {
     unsafe {
         gl::ClearColor(0.1, 0.1, 0.2, 1.0);
         gl::Clear(gl::COLOR_BUFFER_BIT);
         check_gl_error("clear");
 
         shader.use_program();
-
-        gl::BindVertexArray(vao);
-        gl::DrawArrays(gl::TRIANGLES, 0, 3);
-        gl::BindVertexArray(0);
+        triangle.draw();
+        triangle2.draw();
     }
     window.swap_buffers();
 }
