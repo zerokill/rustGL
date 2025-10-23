@@ -487,7 +487,7 @@ Vertex struct in memory:
 [position.x][position.y][position.z][color.r][color.g][color.b]
     0           4           8          12       16       20      (bytes)
 
-Total size: 24 bytes (6 floats × 4 bytes)
+Total size: 24 bytes (6 floats ï¿½ 4 bytes)
 Stride: 24 bytes
 Position offset: 0
 Color offset: 12

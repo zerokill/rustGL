@@ -57,19 +57,22 @@ fn main() {
         println!("OpenGL Version: {}", version.to_str().unwrap());
     }
 
+    // Create a gradient triangle using the constructor
     let triangle_vertices = vec![
-        Vertex::new([-0.5, -0.5, 0.0,], [   1.0, 0.0, 0.0, ]), // Bottom left (red)
-        Vertex::new([0.5, -0.5, 0.0, ], [  0.0, 1.0, 0.0,  ]),// Bottom right (green)
-        Vertex::new([0.0,  0.5, 0.0, ], [  0.0, 0.0, 1.0,  ]),// Top center (blue)
+        Vertex::new([-0.5, -0.5, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 1.0]),
+        Vertex::new([0.5, -0.5, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]),
+        Vertex::new([0.0, 0.5, 0.0], [0.0, 0.0, 1.0], [0.0, 0.0, 1.0]),
     ];
     let triangle = Mesh::new(&triangle_vertices);
 
-    let triangle2_vertices = vec![
-        Vertex::new([0.1, -0.5, 0.0], [1.0, 1.0, 0.0]),   // Bottom left (yellow)
-        Vertex::new([1.1, -0.5, 0.0], [0.0, 1.0, 1.0]),   // Bottom right (cyan)
-        Vertex::new([0.6, 0.5, 0.0], [1.0, 0.0, 1.0]),    // Top center (magenta)
-    ];
-    let triangle2 = Mesh::new(&triangle2_vertices);
+    // Or use the helper function for solid colors
+    let red_triangle = Mesh::triangle([1.0, 0.0, 0.0]);
+
+    // Create an indexed quad
+    let quad = Mesh::quad([0.0, 1.0, 1.0]);  // Cyan
+
+    // Create a gradient quad
+    let gradient_quad = Mesh::quad_gradient();
 
     let shader = Shader::new("shader/basic.vert", "shader/basic.frag");
 
@@ -99,7 +102,7 @@ fn main() {
 
         process_events(&mut window, &events);
         update(delta_time, &mut time);
-        render(&mut window, &triangle, &triangle2, &shader);
+        render(&mut window, &triangle, &shader);
     }
 }
 
@@ -142,7 +145,7 @@ fn update(delta_time: f32, time: &mut f32) {
     *time += delta_time;
 }
 
-fn render(window: &mut glfw::Window, triangle: &Mesh, triangle2: &Mesh, shader: &Shader) {
+fn render(window: &mut glfw::Window, triangle: &Mesh, shader: &Shader) {
     unsafe {
         gl::ClearColor(0.1, 0.1, 0.2, 1.0);
         gl::Clear(gl::COLOR_BUFFER_BIT);
@@ -150,7 +153,6 @@ fn render(window: &mut glfw::Window, triangle: &Mesh, triangle2: &Mesh, shader: 
 
         shader.use_program();
         triangle.draw();
-        triangle2.draw();
     }
     window.swap_buffers();
 }
