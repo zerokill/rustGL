@@ -7,7 +7,7 @@ mod mesh;
 use glfw::{Action, Context, Key};
 use std::time::Instant;
 use shader::Shader;
-use mesh::{Mesh, Vertex};
+use mesh::Mesh;
 
 fn main() {
     // Initialize GLFW
@@ -57,22 +57,16 @@ fn main() {
         println!("OpenGL Version: {}", version.to_str().unwrap());
     }
 
-    // Create a gradient triangle using the constructor
-    let triangle_vertices = vec![
-        Vertex::new([-0.5, -0.5, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 1.0]),
-        Vertex::new([0.5, -0.5, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]),
-        Vertex::new([0.0, 0.5, 0.0], [0.0, 0.0, 1.0], [0.0, 0.0, 1.0]),
-    ];
-    let triangle = Mesh::new(&triangle_vertices);
+    // Create meshes at different positions on screen
+    // Top row: triangles
+    let red_triangle = Mesh::triangle_at([1.0, 0.0, 0.0], -0.5, 0.4);     // Red, top-left
+    let green_triangle = Mesh::triangle_at([0.0, 1.0, 0.0], 0.0, 0.4);    // Green, top-center
+    let blue_triangle = Mesh::triangle_at([0.0, 0.0, 1.0], 0.5, 0.4);     // Blue, top-right
 
-    // Or use the helper function for solid colors
-    let red_triangle = Mesh::triangle([1.0, 0.0, 0.0]);
-
-    // Create an indexed quad
-    let quad = Mesh::quad([0.0, 1.0, 1.0]);  // Cyan
-
-    // Create a gradient quad
-    let gradient_quad = Mesh::quad_gradient();
+    // Bottom row: quads (indexed rendering!)
+    let cyan_quad = Mesh::quad_at([0.0, 1.0, 1.0], -0.5, -0.4);           // Cyan, bottom-left
+    let magenta_quad = Mesh::quad_at([1.0, 0.0, 1.0], 0.0, -0.4);         // Magenta, bottom-center
+    let gradient_quad = Mesh::quad_gradient_at(0.5, -0.4);                // Gradient, bottom-right
 
     let shader = Shader::new("shader/basic.vert", "shader/basic.frag");
 
@@ -102,7 +96,18 @@ fn main() {
 
         process_events(&mut window, &events);
         update(delta_time, &mut time);
-        render(&mut window, &triangle, &shader);
+        render(
+            &mut window,
+            &[
+                &red_triangle,
+                &green_triangle,
+                &blue_triangle,
+                &cyan_quad,
+                &magenta_quad,
+                &gradient_quad,
+            ],
+            &shader,
+        );
     }
 }
 
@@ -145,14 +150,16 @@ fn update(delta_time: f32, time: &mut f32) {
     *time += delta_time;
 }
 
-fn render(window: &mut glfw::Window, triangle: &Mesh, shader: &Shader) {
+fn render(window: &mut glfw::Window, meshes: &[&Mesh], shader: &Shader) {
     unsafe {
         gl::ClearColor(0.1, 0.1, 0.2, 1.0);
         gl::Clear(gl::COLOR_BUFFER_BIT);
         check_gl_error("clear");
 
         shader.use_program();
-        triangle.draw();
+        for mesh in meshes {
+            mesh.draw();
+        }
     }
     window.swap_buffers();
 }

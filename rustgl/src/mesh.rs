@@ -66,6 +66,43 @@ impl Mesh {
         Mesh::new_indexed(&vertices, &indices)
     }
 
+    /// Creates a colored triangle mesh at a specific position
+    pub fn triangle_at(color: [f32; 3], offset_x: f32, offset_y: f32) -> Self {
+        let normal = [0.0, 0.0, 1.0];
+        let vertices = vec![
+            Vertex::new([-0.3 + offset_x, -0.3 + offset_y, 0.0], color, normal),
+            Vertex::new([0.3 + offset_x, -0.3 + offset_y, 0.0], color, normal),
+            Vertex::new([0.0 + offset_x, 0.3 + offset_y, 0.0], color, normal),
+        ];
+        Mesh::new(&vertices)
+    }
+
+    /// Creates a quad mesh at a specific position using indexed rendering
+    pub fn quad_at(color: [f32; 3], offset_x: f32, offset_y: f32) -> Self {
+        let normal = [0.0, 0.0, 1.0];
+        let vertices = vec![
+            Vertex::new([-0.3 + offset_x, -0.3 + offset_y, 0.0], color, normal),  // Bottom left
+            Vertex::new([0.3 + offset_x, -0.3 + offset_y, 0.0], color, normal),   // Bottom right
+            Vertex::new([0.3 + offset_x, 0.3 + offset_y, 0.0], color, normal),    // Top right
+            Vertex::new([-0.3 + offset_x, 0.3 + offset_y, 0.0], color, normal),   // Top left
+        ];
+        let indices = vec![0, 1, 2, 2, 3, 0];
+        Mesh::new_indexed(&vertices, &indices)
+    }
+
+    /// Creates a gradient quad at a specific position
+    pub fn quad_gradient_at(offset_x: f32, offset_y: f32) -> Self {
+        let normal = [0.0, 0.0, 1.0];
+        let vertices = vec![
+            Vertex::new([-0.3 + offset_x, -0.3 + offset_y, 0.0], [1.0, 0.0, 0.0], normal),  // Red
+            Vertex::new([0.3 + offset_x, -0.3 + offset_y, 0.0], [0.0, 1.0, 0.0], normal),   // Green
+            Vertex::new([0.3 + offset_x, 0.3 + offset_y, 0.0], [0.0, 0.0, 1.0], normal),    // Blue
+            Vertex::new([-0.3 + offset_x, 0.3 + offset_y, 0.0], [1.0, 1.0, 0.0], normal),   // Yellow
+        ];
+        let indices = vec![0, 1, 2, 2, 3, 0];
+        Mesh::new_indexed(&vertices, &indices)
+    }
+
     pub fn new(vertices: &[Vertex]) -> Self {
         Self::new_internal(vertices, None)
     }
