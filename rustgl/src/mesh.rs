@@ -227,9 +227,9 @@ impl Mesh {
     }
 
     /// Returns the index count (0 if non-indexed)
-//    pub fn index_count(&self) -> i32 {
-//        self.index_count
-//    }
+    pub fn index_count(&self) -> i32 {
+        self.index_count
+    }
 
     /// Returns true if this mesh uses indexed rendering
     pub fn is_indexed(&self) -> bool {

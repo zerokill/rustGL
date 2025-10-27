@@ -1,6 +1,7 @@
 use std::ffi::CString;
 use std::fs;
 use std::ptr;
+use nalgebra_glm as glm;
 
 /// Manages a compiled and linked OpenGL shader program
 pub struct Shader {
@@ -50,6 +51,35 @@ impl Shader {
     pub fn use_program(&self) {
         unsafe {
             gl::UseProgram(self.id);
+        }
+    }
+
+    pub fn set_mat4(&self, name: &str, matrix: &glm::Mat4) {
+        unsafe {
+            let c_name = CString::new(name).unwrap();
+            let location = gl::GetUniformLocation(self.id, c_name.as_ptr());
+            gl::UniformMatrix4fv(
+                location,
+                1,
+                gl::FALSE,
+                matrix.as_ptr(),
+            );
+        }
+    }
+
+    pub fn set_vec3(&self, name: &str, value: &glm::Vec3) {
+        unsafe {
+            let c_name = CString::new(name).unwrap();
+            let location = gl::GetUniformLocation(self.id, c_name.as_ptr());
+            gl::Uniform3f(location, value.x, value.y, value.z);
+        }
+    }
+
+    pub fn set_float(&self, name: &str, value: f32) {
+        unsafe {
+            let c_name = CString::new(name).unwrap();
+            let location = gl::GetUniformLocation(self.id, c_name.as_ptr());
+            gl::Uniform1f(location, value);
         }
     }
 

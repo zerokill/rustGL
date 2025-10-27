@@ -8,6 +8,7 @@ use glfw::{Action, Context, Key};
 use std::time::Instant;
 use shader::Shader;
 use mesh::Mesh;
+use nalgebra_glm as glm;
 
 fn main() {
     // Initialize GLFW
@@ -57,16 +58,7 @@ fn main() {
         println!("OpenGL Version: {}", version.to_str().unwrap());
     }
 
-    // Create meshes at different positions on screen
-    // Top row: triangles
-    let red_triangle = Mesh::triangle_at([1.0, 0.0, 0.0], -0.5, 0.4);     // Red, top-left
-    let green_triangle = Mesh::triangle_at([0.0, 1.0, 0.0], 0.0, 0.4);    // Green, top-center
-    let blue_triangle = Mesh::triangle_at([0.0, 0.0, 1.0], 0.5, 0.4);     // Blue, top-right
-
-    // Bottom row: quads (indexed rendering!)
-    let cyan_quad = Mesh::quad_at([0.0, 1.0, 1.0], -0.5, -0.4);           // Cyan, bottom-left
-    let magenta_quad = Mesh::quad_at([1.0, 0.0, 1.0], 0.0, -0.4);         // Magenta, bottom-center
-    let gradient_quad = Mesh::quad_gradient_at(0.5, -0.4);                // Gradient, bottom-right
+    let quad = Mesh::quad([0.0, 1.0, 1.0]);
 
     let shader = Shader::new("shader/basic.vert", "shader/basic.frag");
 
@@ -98,15 +90,9 @@ fn main() {
         update(delta_time, &mut time);
         render(
             &mut window,
-            &[
-                &red_triangle,
-                &green_triangle,
-                &blue_triangle,
-                &cyan_quad,
-                &magenta_quad,
-                &gradient_quad,
-            ],
+            &quad,
             &shader,
+            time,
         );
     }
 }
@@ -150,16 +136,46 @@ fn update(delta_time: f32, time: &mut f32) {
     *time += delta_time;
 }
 
-fn render(window: &mut glfw::Window, meshes: &[&Mesh], shader: &Shader) {
+fn render(window: &mut glfw::Window, mesh: &Mesh, shader: &Shader, time: f32) {
     unsafe {
         gl::ClearColor(0.1, 0.1, 0.2, 1.0);
         gl::Clear(gl::COLOR_BUFFER_BIT);
         check_gl_error("clear");
 
         shader.use_program();
-        for mesh in meshes {
-            mesh.draw();
-        }
+
+        // Example 1: Static translation
+        let model1 = glm::translate(&glm::Mat4::identity(), &glm::vec3(-0.6, 0.5, 0.0));
+        shader.set_mat4("model", &model1);
+        mesh.draw();
+
+        // Example 2: Rotation (animated)
+        let mut model2 = glm::Mat4::identity();
+        model2 = glm::translate(&model2, &glm::vec3(0.0, 0.5, 0.0));
+        model2 = glm::rotate(&model2, time, &glm::vec3(0.0, 0.0, 1.0));  // Rotate around Z-axis
+        model2 = glm::scale(&model2, &glm::vec3(0.5, 0.5, 0.5));  // Scale to 50%
+        shader.set_mat4("model", &model2);
+        mesh.draw();
+
+        // Example 3: Scaling (pulsing)
+        let scale = 1.0 + 0.5 * (time * 2.0).sin();  // Pulse between 0.5 and 1.5
+        let mut model3 = glm::Mat4::identity();
+        model3 = glm::translate(&model3, &glm::vec3(0.6, 0.5, 0.0));
+        model3 = glm::scale(&model3, &glm::vec3(scale, scale, 1.0));
+        shader.set_mat4("model", &model3);
+        mesh.draw();
+
+        // Example 4: Combined transformation (orbit)
+        let orbit_radius = 0.3;
+        let orbit_x = orbit_radius * (time * 1.5).cos();
+        let orbit_y = orbit_radius * (time * 1.5).sin();
+        let mut model4 = glm::Mat4::identity();
+        model4 = glm::translate(&model4, &glm::vec3(orbit_x, -0.4, 0.0));
+        model4 = glm::rotate(&model4, time * 2.0, &glm::vec3(0.0, 0.0, 1.0));
+        model4 = glm::scale(&model4, &glm::vec3(0.3, 0.3, 1.0));
+        shader.set_mat4("model", &model4);
+        mesh.draw();
+
     }
     window.swap_buffers();
 }
