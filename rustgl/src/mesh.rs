@@ -103,6 +103,43 @@ impl Mesh {
         Mesh::new_indexed(&vertices, &indices)
     }
 
+    /// Creates a 3D cube mesh using indexed rendering
+    pub fn cube(color: [f32; 3]) -> Self {
+        let normal = [0.0, 0.0, 1.0];  // We'll fix normals in lighting lesson
+
+        // 8 unique vertices for a cube
+        let vertices = vec![
+            // Front face
+            Vertex::new([-0.5, -0.5, 0.5], color, normal),  // 0
+            Vertex::new([0.5, -0.5, 0.5], color, normal),   // 1
+            Vertex::new([0.5, 0.5, 0.5], color, normal),    // 2
+            Vertex::new([-0.5, 0.5, 0.5], color, normal),   // 3
+            // Back face
+            Vertex::new([-0.5, -0.5, -0.5], color, normal), // 4
+            Vertex::new([0.5, -0.5, -0.5], color, normal),  // 5
+            Vertex::new([0.5, 0.5, -0.5], color, normal),   // 6
+            Vertex::new([-0.5, 0.5, -0.5], color, normal),  // 7
+        ];
+
+        // 36 indices for 12 triangles (6 faces � 2 triangles)
+        let indices = vec![
+            // Front
+            0, 1, 2, 2, 3, 0,
+            // Right
+            1, 5, 6, 6, 2, 1,
+            // Back
+            5, 4, 7, 7, 6, 5,
+            // Left
+            4, 0, 3, 3, 7, 4,
+            // Top
+            3, 2, 6, 6, 7, 3,
+            // Bottom
+            4, 5, 1, 1, 0, 4,
+        ];
+
+        Mesh::new_indexed(&vertices, &indices)
+    }
+
     pub fn new(vertices: &[Vertex]) -> Self {
         Self::new_internal(vertices, None)
     }

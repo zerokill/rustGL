@@ -3,11 +3,13 @@ extern crate glfw;
 
 mod shader;
 mod mesh;
+mod camera;
 
 use glfw::{Action, Context, Key};
 use std::time::Instant;
 use shader::Shader;
 use mesh::Mesh;
+use camera::{Camera, CameraMovement};
 use nalgebra_glm as glm;
 
 fn main() {
@@ -58,9 +60,11 @@ fn main() {
         println!("OpenGL Version: {}", version.to_str().unwrap());
     }
 
-    let quad = Mesh::quad([0.0, 1.0, 1.0]);
+    let cube = Mesh::cube([1.0, 0.5, 0.2]);
 
     let shader = Shader::new("shader/basic.vert", "shader/basic.frag");
+
+    let mut camera = Camera::default();
 
     let mut last_frame = Instant::now();
     let mut frame_count = 0;
@@ -77,21 +81,25 @@ fn main() {
         if fps_timer.elapsed().as_secs() >= 1 {
             // Update window title with FPS
             let title = format!(
-                "RustGL by mau | FPS: {} | Frame time: {:.2}ms",
+                "RustGL by mau | FPS: {} | Frame time: {:.2}ms | Pos: ({:.1}, {:.1}, {:.1})",
                 frame_count,
-                delta_time * 1000.0
+                delta_time * 1000.0,
+                camera.position.x,
+                camera.position.y,
+                camera.position.z,
             );
             window.set_title(&title);
             frame_count = 0;
             fps_timer = Instant::now();
         }
 
-        process_events(&mut window, &events);
+        process_events(&mut window, &events, &mut camera, delta_time);
         update(delta_time, &mut time);
         render(
             &mut window,
-            &quad,
+            &cube,
             &shader,
+            &camera,
             time,
         );
     }
@@ -100,25 +108,49 @@ fn main() {
 fn process_events(
     window: &mut glfw::Window,
     events: &glfw::GlfwReceiver<(f64, glfw::WindowEvent)>,
+    camera: &mut Camera,
+    delta_time: f32,
 ) {
     window.glfw.poll_events();
     for (_, event) in glfw::flush_messages(events) {
-        handle_window_event(window, event);
+        handle_window_event(window, event, camera, delta_time);
     }
 }
 
-fn handle_window_event(window: &mut glfw::Window, event: glfw::WindowEvent) {
+fn handle_window_event(
+    window: &mut glfw::Window,
+    event: glfw::WindowEvent,
+    camera: &mut Camera,
+    delta_time: f32,
+) {
     match event {
         glfw::WindowEvent::Key(Key::Escape, _, Action::Press, _) => {
             window.set_should_close(true);
-        }
-        glfw::WindowEvent::Key(Key::Space, _, Action::Press, _) => {
-            println!("Space pressed!");
         }
         glfw::WindowEvent::FramebufferSize(width, height) => unsafe {
             gl::Viewport(0, 0, width, height);
         },
         _ => {}
+    }
+
+    // Camera controls (WASD + QE)
+    if window.get_key(Key::W) == Action::Press {
+        camera.process_keyboard(CameraMovement::Forward, delta_time);
+    }
+    if window.get_key(Key::S) == Action::Press {
+        camera.process_keyboard(CameraMovement::Backward, delta_time);
+    }
+    if window.get_key(Key::A) == Action::Press {
+        camera.process_keyboard(CameraMovement::Left, delta_time);
+    }
+    if window.get_key(Key::D) == Action::Press {
+        camera.process_keyboard(CameraMovement::Right, delta_time);
+    }
+    if window.get_key(Key::Q) == Action::Press {
+        camera.process_keyboard(CameraMovement::Down, delta_time);
+    }
+    if window.get_key(Key::E) == Action::Press {
+        camera.process_keyboard(CameraMovement::Up, delta_time);
     }
 }
 
@@ -136,7 +168,7 @@ fn update(delta_time: f32, time: &mut f32) {
     *time += delta_time;
 }
 
-fn render(window: &mut glfw::Window, mesh: &Mesh, shader: &Shader, time: f32) {
+fn render(window: &mut glfw::Window, mesh: &Mesh, shader: &Shader, camera: &Camera, time: f32) {
     unsafe {
         gl::ClearColor(0.1, 0.1, 0.2, 1.0);
         gl::Clear(gl::COLOR_BUFFER_BIT);
@@ -144,37 +176,39 @@ fn render(window: &mut glfw::Window, mesh: &Mesh, shader: &Shader, time: f32) {
 
         shader.use_program();
 
-        // Example 1: Static translation
-        let model1 = glm::translate(&glm::Mat4::identity(), &glm::vec3(-0.6, 0.5, 0.0));
-        shader.set_mat4("model", &model1);
-        mesh.draw();
+        let view = camera.get_view_matrix();
+        shader.set_mat4("view", &view);
 
-        // Example 2: Rotation (animated)
-        let mut model2 = glm::Mat4::identity();
-        model2 = glm::translate(&model2, &glm::vec3(0.0, 0.5, 0.0));
-        model2 = glm::rotate(&model2, time, &glm::vec3(0.0, 0.0, 1.0));  // Rotate around Z-axis
-        model2 = glm::scale(&model2, &glm::vec3(0.5, 0.5, 0.5));  // Scale to 50%
-        shader.set_mat4("model", &model2);
-        mesh.draw();
+        let projection = glm::perspective(
+            1024.0 / 768.0,
+            camera.zoom.to_radians(),
+            0.1,
+            100.0,
+        );
+        shader.set_mat4("projection", &projection);
 
-        // Example 3: Scaling (pulsing)
-        let scale = 1.0 + 0.5 * (time * 2.0).sin();  // Pulse between 0.5 and 1.5
-        let mut model3 = glm::Mat4::identity();
-        model3 = glm::translate(&model3, &glm::vec3(0.6, 0.5, 0.0));
-        model3 = glm::scale(&model3, &glm::vec3(scale, scale, 1.0));
-        shader.set_mat4("model", &model3);
-        mesh.draw();
+       // Draw multiple cubes at different positions
+       let cube_positions = [
+           glm::vec3(0.0, 0.0, 0.0),
+           glm::vec3(2.0, 5.0, -15.0),
+           glm::vec3(-1.5, -2.2, -2.5),
+           glm::vec3(-3.8, -2.0, -12.3),
+           glm::vec3(2.4, -0.4, -3.5),
+           glm::vec3(-1.7, 3.0, -7.5),
+           glm::vec3(1.3, -2.0, -2.5),
+           glm::vec3(1.5, 2.0, -2.5),
+           glm::vec3(1.5, 0.2, -1.5),
+           glm::vec3(-1.3, 1.0, -1.5),
+       ];
 
-        // Example 4: Combined transformation (orbit)
-        let orbit_radius = 0.3;
-        let orbit_x = orbit_radius * (time * 1.5).cos();
-        let orbit_y = orbit_radius * (time * 1.5).sin();
-        let mut model4 = glm::Mat4::identity();
-        model4 = glm::translate(&model4, &glm::vec3(orbit_x, -0.4, 0.0));
-        model4 = glm::rotate(&model4, time * 2.0, &glm::vec3(0.0, 0.0, 1.0));
-        model4 = glm::scale(&model4, &glm::vec3(0.3, 0.3, 1.0));
-        shader.set_mat4("model", &model4);
-        mesh.draw();
+       for (i, position) in cube_positions.iter().enumerate() {
+           let mut model = glm::Mat4::identity();
+           model = glm::translate(&model, position);
+           let angle = 20.0 * i as f32 + time * 10.0;
+           model = glm::rotate(&model, angle.to_radians(), &glm::vec3(1.0, 0.3, 0.5));
+           shader.set_mat4("model", &model);
+           mesh.draw();
+       }
 
     }
     window.swap_buffers();
