@@ -51,6 +51,9 @@ fn main() {
     window.set_key_polling(true);
     window.set_framebuffer_size_polling(true);
 
+    // Enable V-Sync to cap FPS at monitor refresh rate (usually 60 FPS)
+    glfw.set_swap_interval(glfw::SwapInterval::Sync(1));
+
     // Load OpenGL function pointers
     gl::load_with(|symbol| window.get_proc_address(symbol) as *const _);
 
@@ -66,16 +69,22 @@ fn main() {
 
     let mut camera = Camera::default();
 
-    let mut last_frame = Instant::now();
+    const TARGET_FPS: f32 = 60.0;
+    const TARGET_FRAME_TIME: f32 = 1.0 / TARGET_FPS;
+
+    let mut last_frame_time = glfw.get_time() as f32;
     let mut frame_count = 0;
     let mut fps_timer = Instant::now();
     let mut time = 0.0f32;
 
     // Window loop - keep the window open
     while !window.should_close() {
-        let current_frame = Instant::now();
-        let delta_time = current_frame.duration_since(last_frame).as_secs_f32();
-        last_frame = current_frame;
+        // Frame timing - wait until target frame time has elapsed
+        let mut delta_time = glfw.get_time() as f32 - last_frame_time;
+        while delta_time < TARGET_FRAME_TIME {
+            delta_time = glfw.get_time() as f32 - last_frame_time;
+        }
+        last_frame_time = glfw.get_time() as f32;
 
         frame_count += 1;
         if fps_timer.elapsed().as_secs() >= 1 {
@@ -112,28 +121,14 @@ fn process_events(
     delta_time: f32,
 ) {
     window.glfw.poll_events();
+
+    // Handle window events (resize, etc.)
     for (_, event) in glfw::flush_messages(events) {
-        handle_window_event(window, event, camera, delta_time);
-    }
-}
-
-fn handle_window_event(
-    window: &mut glfw::Window,
-    event: glfw::WindowEvent,
-    camera: &mut Camera,
-    delta_time: f32,
-) {
-    match event {
-        glfw::WindowEvent::Key(Key::Escape, _, Action::Press, _) => {
-            window.set_should_close(true);
-        }
-        glfw::WindowEvent::FramebufferSize(width, height) => unsafe {
-            gl::Viewport(0, 0, width, height);
-        },
-        _ => {}
+        handle_window_event(window, event);
     }
 
-    // Camera controls (WASD + QE)
+    // Process camera input EVERY FRAME (not event-based)
+    // This ensures smooth, consistent movement
     if window.get_key(Key::W) == Action::Press {
         camera.process_keyboard(CameraMovement::Forward, delta_time);
     }
@@ -151,6 +146,21 @@ fn handle_window_event(
     }
     if window.get_key(Key::E) == Action::Press {
         camera.process_keyboard(CameraMovement::Up, delta_time);
+    }
+}
+
+fn handle_window_event(
+    window: &mut glfw::Window,
+    event: glfw::WindowEvent,
+) {
+    match event {
+        glfw::WindowEvent::Key(Key::Escape, _, Action::Press, _) => {
+            window.set_should_close(true);
+        }
+        glfw::WindowEvent::FramebufferSize(width, height) => unsafe {
+            gl::Viewport(0, 0, width, height);
+        },
+        _ => {}
     }
 }
 
