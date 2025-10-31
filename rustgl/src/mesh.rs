@@ -1,18 +1,20 @@
 use std::mem;
 use std::ptr;
 
-/// Represents a single vertex with position and color
+/// Represents a single vertex with position, color, normal, and UV coordinates
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 pub struct Vertex {
     pub position: [f32; 3],  // x, y, z
     pub color: [f32; 3],     // r, g, b
     pub normal: [f32; 3],    // nx, ny, nz
+    pub uv: [f32; 2],        // u, v (texture coordinates)
 }
 
 impl Vertex {
-    /// Creates a new vertex with position and color
-    pub fn new(position: [f32; 3], color: [f32; 3], normal: [f32; 3]) -> Self {
-        Vertex { position, color, normal }
+    /// Creates a new vertex with position, color, normal, and UV coordinates
+    pub fn new(position: [f32; 3], color: [f32; 3], normal: [f32; 3], uv: [f32; 2]) -> Self {
+        Vertex { position, color, normal, uv }
     }
 }
 
@@ -30,9 +32,9 @@ impl Mesh {
     pub fn triangle(color: [f32; 3]) -> Self {
         let normal = [0.0, 0.0, 1.0];  // Facing camera
         let vertices = vec![
-            Vertex::new([-0.5, -0.5, 0.0], color, normal),
-            Vertex::new([0.5, -0.5, 0.0], color, normal),
-            Vertex::new([0.0, 0.5, 0.0], color, normal),
+            Vertex::new([-0.5, -0.5, 0.0], color, normal, [0.0, 0.0]),
+            Vertex::new([0.5, -0.5, 0.0], color, normal, [1.0, 0.0]),
+            Vertex::new([0.0, 0.5, 0.0], color, normal, [0.5, 1.0]),
         ];
         Mesh::new(&vertices)
     }
@@ -41,10 +43,10 @@ impl Mesh {
     pub fn quad(color: [f32; 3]) -> Self {
         let normal = [0.0, 0.0, 1.0];
         let vertices = vec![
-            Vertex::new([-0.5, -0.5, 0.0], color, normal),  // 0: Bottom left
-            Vertex::new([0.5, -0.5, 0.0], color, normal),   // 1: Bottom right
-            Vertex::new([0.5, 0.5, 0.0], color, normal),    // 2: Top right
-            Vertex::new([-0.5, 0.5, 0.0], color, normal),   // 3: Top left
+            Vertex::new([-0.5, -0.5, 0.0], color, normal, [0.0, 0.0]),  // 0: Bottom left
+            Vertex::new([0.5, -0.5, 0.0], color, normal, [1.0, 0.0]),   // 1: Bottom right
+            Vertex::new([0.5, 0.5, 0.0], color, normal, [1.0, 1.0]),    // 2: Top right
+            Vertex::new([-0.5, 0.5, 0.0], color, normal, [0.0, 1.0]),   // 3: Top left
         ];
         let indices = vec![
             0, 1, 2,  // First triangle
@@ -57,10 +59,10 @@ impl Mesh {
     pub fn quad_gradient() -> Self {
         let normal = [0.0, 0.0, 1.0];
         let vertices = vec![
-            Vertex::new([-0.5, -0.5, 0.0], [1.0, 0.0, 0.0], normal),  // Red
-            Vertex::new([0.5, -0.5, 0.0], [0.0, 1.0, 0.0], normal),   // Green
-            Vertex::new([0.5, 0.5, 0.0], [0.0, 0.0, 1.0], normal),    // Blue
-            Vertex::new([-0.5, 0.5, 0.0], [1.0, 1.0, 0.0], normal),   // Yellow
+            Vertex::new([-0.5, -0.5, 0.0], [1.0, 0.0, 0.0], normal, [0.0, 0.0]),  // Red
+            Vertex::new([0.5, -0.5, 0.0], [0.0, 1.0, 0.0], normal, [1.0, 0.0]),   // Green
+            Vertex::new([0.5, 0.5, 0.0], [0.0, 0.0, 1.0], normal, [1.0, 1.0]),    // Blue
+            Vertex::new([-0.5, 0.5, 0.0], [1.0, 1.0, 0.0], normal, [0.0, 1.0]),   // Yellow
         ];
         let indices = vec![0, 1, 2, 2, 3, 0];
         Mesh::new_indexed(&vertices, &indices)
@@ -70,9 +72,9 @@ impl Mesh {
     pub fn triangle_at(color: [f32; 3], offset_x: f32, offset_y: f32) -> Self {
         let normal = [0.0, 0.0, 1.0];
         let vertices = vec![
-            Vertex::new([-0.3 + offset_x, -0.3 + offset_y, 0.0], color, normal),
-            Vertex::new([0.3 + offset_x, -0.3 + offset_y, 0.0], color, normal),
-            Vertex::new([0.0 + offset_x, 0.3 + offset_y, 0.0], color, normal),
+            Vertex::new([-0.3 + offset_x, -0.3 + offset_y, 0.0], color, normal, [0.0, 0.0]),
+            Vertex::new([0.3 + offset_x, -0.3 + offset_y, 0.0], color, normal, [1.0, 0.0]),
+            Vertex::new([0.0 + offset_x, 0.3 + offset_y, 0.0], color, normal, [0.5, 1.0]),
         ];
         Mesh::new(&vertices)
     }
@@ -81,10 +83,10 @@ impl Mesh {
     pub fn quad_at(color: [f32; 3], offset_x: f32, offset_y: f32) -> Self {
         let normal = [0.0, 0.0, 1.0];
         let vertices = vec![
-            Vertex::new([-0.3 + offset_x, -0.3 + offset_y, 0.0], color, normal),  // Bottom left
-            Vertex::new([0.3 + offset_x, -0.3 + offset_y, 0.0], color, normal),   // Bottom right
-            Vertex::new([0.3 + offset_x, 0.3 + offset_y, 0.0], color, normal),    // Top right
-            Vertex::new([-0.3 + offset_x, 0.3 + offset_y, 0.0], color, normal),   // Top left
+            Vertex::new([-0.3 + offset_x, -0.3 + offset_y, 0.0], color, normal, [0.0, 0.0]),  // Bottom left
+            Vertex::new([0.3 + offset_x, -0.3 + offset_y, 0.0], color, normal, [1.0, 0.0]),   // Bottom right
+            Vertex::new([0.3 + offset_x, 0.3 + offset_y, 0.0], color, normal, [1.0, 1.0]),    // Top right
+            Vertex::new([-0.3 + offset_x, 0.3 + offset_y, 0.0], color, normal, [0.0, 1.0]),   // Top left
         ];
         let indices = vec![0, 1, 2, 2, 3, 0];
         Mesh::new_indexed(&vertices, &indices)
@@ -94,10 +96,10 @@ impl Mesh {
     pub fn quad_gradient_at(offset_x: f32, offset_y: f32) -> Self {
         let normal = [0.0, 0.0, 1.0];
         let vertices = vec![
-            Vertex::new([-0.3 + offset_x, -0.3 + offset_y, 0.0], [1.0, 0.0, 0.0], normal),  // Red
-            Vertex::new([0.3 + offset_x, -0.3 + offset_y, 0.0], [0.0, 1.0, 0.0], normal),   // Green
-            Vertex::new([0.3 + offset_x, 0.3 + offset_y, 0.0], [0.0, 0.0, 1.0], normal),    // Blue
-            Vertex::new([-0.3 + offset_x, 0.3 + offset_y, 0.0], [1.0, 1.0, 0.0], normal),   // Yellow
+            Vertex::new([-0.3 + offset_x, -0.3 + offset_y, 0.0], [1.0, 0.0, 0.0], normal, [0.0, 0.0]),  // Red
+            Vertex::new([0.3 + offset_x, -0.3 + offset_y, 0.0], [0.0, 1.0, 0.0], normal, [1.0, 0.0]),   // Green
+            Vertex::new([0.3 + offset_x, 0.3 + offset_y, 0.0], [0.0, 0.0, 1.0], normal, [1.0, 1.0]),    // Blue
+            Vertex::new([-0.3 + offset_x, 0.3 + offset_y, 0.0], [1.0, 1.0, 0.0], normal, [0.0, 1.0]),   // Yellow
         ];
         let indices = vec![0, 1, 2, 2, 3, 0];
         Mesh::new_indexed(&vertices, &indices)
@@ -110,15 +112,15 @@ impl Mesh {
         // 8 unique vertices for a cube
         let vertices = vec![
             // Front face
-            Vertex::new([-0.5, -0.5, 0.5], color, normal),  // 0
-            Vertex::new([0.5, -0.5, 0.5], color, normal),   // 1
-            Vertex::new([0.5, 0.5, 0.5], color, normal),    // 2
-            Vertex::new([-0.5, 0.5, 0.5], color, normal),   // 3
+            Vertex::new([-0.5, -0.5, 0.5], color, normal, [0.0, 0.0]),  // 0
+            Vertex::new([0.5, -0.5, 0.5], color, normal, [1.0, 0.0]),   // 1
+            Vertex::new([0.5, 0.5, 0.5], color, normal, [1.0, 1.0]),    // 2
+            Vertex::new([-0.5, 0.5, 0.5], color, normal, [0.0, 1.0]),   // 3
             // Back face
-            Vertex::new([-0.5, -0.5, -0.5], color, normal), // 4
-            Vertex::new([0.5, -0.5, -0.5], color, normal),  // 5
-            Vertex::new([0.5, 0.5, -0.5], color, normal),   // 6
-            Vertex::new([-0.5, 0.5, -0.5], color, normal),  // 7
+            Vertex::new([-0.5, -0.5, -0.5], color, normal, [1.0, 0.0]), // 4
+            Vertex::new([0.5, -0.5, -0.5], color, normal, [0.0, 0.0]),  // 5
+            Vertex::new([0.5, 0.5, -0.5], color, normal, [0.0, 1.0]),   // 6
+            Vertex::new([-0.5, 0.5, -0.5], color, normal, [1.0, 1.0]),  // 7
         ];
 
         // 36 indices for 12 triangles (6 faces � 2 triangles)
@@ -136,6 +138,240 @@ impl Mesh {
             // Bottom
             4, 5, 1, 1, 0, 4,
         ];
+
+        Mesh::new_indexed(&vertices, &indices)
+    }
+
+    /// Creates a UV sphere mesh using indexed rendering
+    ///
+    /// # Arguments
+    /// * `radius` - Sphere radius
+    /// * `segments` - Number of horizontal divisions (longitude)
+    /// * `rings` - Number of vertical divisions (latitude)
+    /// * `color` - RGB color for all vertices
+    pub fn sphere(radius: f32, segments: u32, rings: u32, color: [f32; 3]) -> Self {
+        let mut vertices = Vec::new();
+        let mut indices = Vec::new();
+
+        // Generate vertices
+        for ring in 0..=rings {
+            let theta = ring as f32 * std::f32::consts::PI / rings as f32;
+            let sin_theta = theta.sin();
+            let cos_theta = theta.cos();
+
+            for seg in 0..=segments {
+                let phi = seg as f32 * 2.0 * std::f32::consts::PI / segments as f32;
+                let sin_phi = phi.sin();
+                let cos_phi = phi.cos();
+
+                // Spherical to Cartesian coordinates
+                let x = cos_phi * sin_theta;
+                let y = cos_theta;
+                let z = sin_phi * sin_theta;
+
+                // Position and normal (for a sphere, normal = normalized position)
+                let position = [x * radius, y * radius, z * radius];
+                let normal = [x, y, z];
+
+                // UV coordinates
+                let u = seg as f32 / segments as f32;
+                let v = ring as f32 / rings as f32;
+
+                vertices.push(Vertex::new(position, color, normal, [u, v]));
+            }
+        }
+
+        // Generate indices
+        for ring in 0..rings {
+            for seg in 0..segments {
+                let current_ring_start = ring * (segments + 1);
+                let next_ring_start = (ring + 1) * (segments + 1);
+
+                let current = current_ring_start + seg;
+                let next = current_ring_start + seg + 1;
+                let current_below = next_ring_start + seg;
+                let next_below = next_ring_start + seg + 1;
+
+                // First triangle
+                indices.push(current);
+                indices.push(current_below);
+                indices.push(next);
+
+                // Second triangle
+                indices.push(next);
+                indices.push(current_below);
+                indices.push(next_below);
+            }
+        }
+
+        Mesh::new_indexed(&vertices, &indices)
+    }
+
+    /// Creates a cylinder mesh using indexed rendering
+    ///
+    /// # Arguments
+    /// * `radius` - Cylinder radius
+    /// * `height` - Cylinder height
+    /// * `segments` - Number of segments around the circumference
+    /// * `color` - RGB color for all vertices
+    pub fn cylinder(radius: f32, height: f32, segments: u32, color: [f32; 3]) -> Self {
+        let mut vertices = Vec::new();
+        let mut indices = Vec::new();
+
+        let half_height = height / 2.0;
+
+        // Generate vertices for top and bottom circles
+        for i in 0..=1 {
+            let y = if i == 0 { -half_height } else { half_height };
+            let normal_y = if i == 0 { -1.0 } else { 1.0 };
+            let v = if i == 0 { 0.0 } else { 1.0 };
+
+            for seg in 0..=segments {
+                let theta = seg as f32 * 2.0 * std::f32::consts::PI / segments as f32;
+                let x = theta.cos() * radius;
+                let z = theta.sin() * radius;
+                let u = seg as f32 / segments as f32;
+
+                vertices.push(Vertex::new([x, y, z], color, [0.0, normal_y, 0.0], [u, v]));
+            }
+        }
+
+        // Generate vertices for the side
+        for i in 0..=1 {
+            let y = if i == 0 { -half_height } else { half_height };
+            let v = i as f32;
+
+            for seg in 0..=segments {
+                let theta = seg as f32 * 2.0 * std::f32::consts::PI / segments as f32;
+                let x = theta.cos() * radius;
+                let z = theta.sin() * radius;
+                let nx = theta.cos();
+                let nz = theta.sin();
+                let u = seg as f32 / segments as f32;
+
+                vertices.push(Vertex::new([x, y, z], color, [nx, 0.0, nz], [u, v]));
+            }
+        }
+
+        // Generate indices for sides
+        let side_start = (segments + 1) * 2;
+        for seg in 0..segments {
+            let current = side_start + seg;
+            let next = side_start + seg + 1;
+            let current_top = side_start + (segments + 1) + seg;
+            let next_top = side_start + (segments + 1) + seg + 1;
+
+            indices.push(current);
+            indices.push(next);
+            indices.push(current_top);
+
+            indices.push(current_top);
+            indices.push(next);
+            indices.push(next_top);
+        }
+
+        // Generate indices for top and bottom caps
+        // Bottom cap (center vertex)
+        let bottom_center_idx = vertices.len() as u32;
+        vertices.push(Vertex::new([0.0, -half_height, 0.0], color, [0.0, -1.0, 0.0], [0.5, 0.5]));
+
+        for seg in 0..segments {
+            indices.push(bottom_center_idx);
+            indices.push(seg + 1);
+            indices.push(seg);
+        }
+
+        // Top cap (center vertex)
+        let top_center_idx = vertices.len() as u32;
+        vertices.push(Vertex::new([0.0, half_height, 0.0], color, [0.0, 1.0, 0.0], [0.5, 0.5]));
+
+        let top_start = segments + 1;
+        for seg in 0..segments {
+            indices.push(top_center_idx);
+            indices.push(top_start + seg);
+            indices.push(top_start + seg + 1);
+        }
+
+        Mesh::new_indexed(&vertices, &indices)
+    }
+
+    /// Creates a torus mesh using indexed rendering
+    ///
+    /// # Arguments
+    /// * `major_radius` - Distance from center of torus to center of tube
+    /// * `minor_radius` - Radius of the tube
+    /// * `major_segments` - Number of segments around the major circle
+    /// * `minor_segments` - Number of segments around the tube
+    /// * `color` - RGB color for all vertices
+    pub fn torus(major_radius: f32, minor_radius: f32, major_segments: u32, minor_segments: u32, color: [f32; 3]) -> Self {
+        let mut vertices = Vec::new();
+        let mut indices = Vec::new();
+
+        // Generate vertices
+        for i in 0..=major_segments {
+            let u = i as f32 * 2.0 * std::f32::consts::PI / major_segments as f32;
+            let cos_u = u.cos();
+            let sin_u = u.sin();
+
+            for j in 0..=minor_segments {
+                let v = j as f32 * 2.0 * std::f32::consts::PI / minor_segments as f32;
+                let cos_v = v.cos();
+                let sin_v = v.sin();
+
+                let x = (major_radius + minor_radius * cos_v) * cos_u;
+                let y = minor_radius * sin_v;
+                let z = (major_radius + minor_radius * cos_v) * sin_u;
+
+                let nx = cos_v * cos_u;
+                let ny = sin_v;
+                let nz = cos_v * sin_u;
+
+                // UV coordinates
+                let tex_u = i as f32 / major_segments as f32;
+                let tex_v = j as f32 / minor_segments as f32;
+
+                vertices.push(Vertex::new([x, y, z], color, [nx, ny, nz], [tex_u, tex_v]));
+            }
+        }
+
+        // Generate indices
+        for i in 0..major_segments {
+            for j in 0..minor_segments {
+                let first = i * (minor_segments + 1) + j;
+                let second = first + minor_segments + 1;
+
+                indices.push(first);
+                indices.push(second);
+                indices.push(first + 1);
+
+                indices.push(second);
+                indices.push(second + 1);
+                indices.push(first + 1);
+            }
+        }
+
+        Mesh::new_indexed(&vertices, &indices)
+    }
+
+    /// Creates a plane mesh using indexed rendering
+    ///
+    /// # Arguments
+    /// * `width` - Plane width
+    /// * `depth` - Plane depth
+    /// * `color` - RGB color for all vertices
+    pub fn plane(width: f32, depth: f32, color: [f32; 3]) -> Self {
+        let half_width = width / 2.0;
+        let half_depth = depth / 2.0;
+        let normal = [0.0, 1.0, 0.0];
+
+        let vertices = vec![
+            Vertex::new([-half_width, 0.0, -half_depth], color, normal, [0.0, 0.0]),
+            Vertex::new([half_width, 0.0, -half_depth], color, normal, [1.0, 0.0]),
+            Vertex::new([half_width, 0.0, half_depth], color, normal, [1.0, 1.0]),
+            Vertex::new([-half_width, 0.0, half_depth], color, normal, [0.0, 1.0]),
+        ];
+
+        let indices = vec![0, 1, 2, 2, 3, 0];
 
         Mesh::new_indexed(&vertices, &indices)
     }
@@ -203,6 +439,17 @@ impl Mesh {
                 (6 * mem::size_of::<f32>()) as *const std::ffi::c_void,  // offset (6 floats)
             );
             gl::EnableVertexAttribArray(2);
+
+            // UV attribute (location = 3)
+            gl::VertexAttribPointer(
+                3,                                                 // location
+                2,                                                 // size (u, v)
+                gl::FLOAT,                                         // type
+                gl::FALSE,                                         // normalized
+                mem::size_of::<Vertex>() as i32,                   // stride
+                (9 * mem::size_of::<f32>()) as *const std::ffi::c_void,  // offset (9 floats: 3 pos + 3 color + 3 normal)
+            );
+            gl::EnableVertexAttribArray(3);
 
             // Handle EBO if indices are provided
             index_count = if let Some(idx) = indices {

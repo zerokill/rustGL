@@ -63,7 +63,12 @@ fn main() {
         println!("OpenGL Version: {}", version.to_str().unwrap());
     }
 
-    let cube = Mesh::cube([1.0, 0.5, 0.2]);
+    // Create all primitive shapes
+    let sphere = Mesh::sphere(1.0, 32, 16, [0.3, 0.7, 1.0]);  // Blue sphere
+    let cube = Mesh::cube([1.0, 0.5, 0.2]);  // Orange cube
+    let cylinder = Mesh::cylinder(0.5, 2.0, 32, [0.2, 1.0, 0.3]);  // Green cylinder
+    let torus = Mesh::torus(1.0, 0.3, 32, 16, [1.0, 0.3, 0.7]);  // Pink torus
+    let plane = Mesh::plane(10.0, 10.0, [0.3, 0.3, 0.3]);  // Gray plane
 
     let shader = Shader::new("shader/basic.vert", "shader/basic.frag");
 
@@ -106,7 +111,11 @@ fn main() {
         update(delta_time, &mut time);
         render(
             &mut window,
+            &sphere,
             &cube,
+            &cylinder,
+            &torus,
+            &plane,
             &shader,
             &camera,
             time,
@@ -178,10 +187,21 @@ fn update(delta_time: f32, time: &mut f32) {
     *time += delta_time;
 }
 
-fn render(window: &mut glfw::Window, mesh: &Mesh, shader: &Shader, camera: &Camera, time: f32) {
+fn render(
+    window: &mut glfw::Window,
+    sphere: &Mesh,
+    cube: &Mesh,
+    cylinder: &Mesh,
+    torus: &Mesh,
+    plane: &Mesh,
+    shader: &Shader,
+    camera: &Camera,
+    time: f32,
+) {
     unsafe {
+        gl::Enable(gl::DEPTH_TEST);
         gl::ClearColor(0.1, 0.1, 0.2, 1.0);
-        gl::Clear(gl::COLOR_BUFFER_BIT);
+        gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
         check_gl_error("clear");
 
         shader.use_program();
@@ -197,29 +217,49 @@ fn render(window: &mut glfw::Window, mesh: &Mesh, shader: &Shader, camera: &Came
         );
         shader.set_mat4("projection", &projection);
 
-       // Draw multiple cubes at different positions
-       let cube_positions = [
-           glm::vec3(0.0, 0.0, 0.0),
-           glm::vec3(2.0, 5.0, -15.0),
-           glm::vec3(-1.5, -2.2, -2.5),
-           glm::vec3(-3.8, -2.0, -12.3),
-           glm::vec3(2.4, -0.4, -3.5),
-           glm::vec3(-1.7, 3.0, -7.5),
-           glm::vec3(1.3, -2.0, -2.5),
-           glm::vec3(1.5, 2.0, -2.5),
-           glm::vec3(1.5, 0.2, -1.5),
-           glm::vec3(-1.3, 1.0, -1.5),
-       ];
+        // Draw plane (ground)
+        let mut model = glm::Mat4::identity();
+        model = glm::translate(&model, &glm::vec3(0.0, -2.0, 0.0));
+        shader.set_mat4("model", &model);
+        plane.draw();
 
-       for (i, position) in cube_positions.iter().enumerate() {
-           let mut model = glm::Mat4::identity();
-           model = glm::translate(&model, position);
-           let angle = 20.0 * i as f32 + time * 10.0;
-           model = glm::rotate(&model, angle.to_radians(), &glm::vec3(1.0, 0.3, 0.5));
-           shader.set_mat4("model", &model);
-           mesh.draw();
-       }
+        // Draw sphere (left, rotating)
+        let mut model = glm::Mat4::identity();
+        model = glm::translate(&model, &glm::vec3(-4.0, 0.0, 0.0));
+        model = glm::rotate(&model, time * 0.5, &glm::vec3(0.0, 1.0, 0.0));
+        model = glm::rotate(&model, time * 0.3, &glm::vec3(1.0, 0.0, 0.0));
+        shader.set_mat4("model", &model);
+        sphere.draw();
 
+        // Draw cube (center-left, rotating)
+        let mut model = glm::Mat4::identity();
+        model = glm::translate(&model, &glm::vec3(-2.0, 0.0, 0.0));
+        model = glm::rotate(&model, time * 0.7, &glm::vec3(1.0, 1.0, 0.0));
+        shader.set_mat4("model", &model);
+        cube.draw();
+
+        // Draw cylinder (center, rotating)
+        let mut model = glm::Mat4::identity();
+        model = glm::translate(&model, &glm::vec3(0.0, 0.0, 0.0));
+        model = glm::rotate(&model, time * 0.4, &glm::vec3(0.0, 1.0, 0.0));
+        model = glm::rotate(&model, time * 0.3, &glm::vec3(1.0, 0.0, 0.0));
+        shader.set_mat4("model", &model);
+        cylinder.draw();
+
+        // Draw torus (center-right, rotating)
+        let mut model = glm::Mat4::identity();
+        model = glm::translate(&model, &glm::vec3(2.0, 0.0, 0.0));
+        model = glm::rotate(&model, time * 0.6, &glm::vec3(1.0, 0.5, 0.0));
+        shader.set_mat4("model", &model);
+        torus.draw();
+
+        // Draw another sphere (right, different rotation)
+        let mut model = glm::Mat4::identity();
+        model = glm::translate(&model, &glm::vec3(4.0, 0.0, 0.0));
+        model = glm::rotate(&model, time * 0.8, &glm::vec3(0.5, 1.0, 0.5));
+        model = glm::scale(&model, &glm::vec3(0.8, 0.8, 0.8));
+        shader.set_mat4("model", &model);
+        sphere.draw();
     }
     window.swap_buffers();
 }
