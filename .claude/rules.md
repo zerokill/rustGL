@@ -93,13 +93,14 @@ The project follows a **42-step learning path** organized into **8 phases**:
 ## Current Progress
 
 Based on git commits and the learning plan:
-- ✅ **Completed through Step 14** (Texture Mapping working)
+- ✅ **Completed through Step 15** (Phong Lighting working)
 - ✅ Phase 1: Foundation - COMPLETE
 - ✅ Phase 2: Core Rendering - COMPLETE
 - 🔄 **Phase 3 In Progress**: Appearance (Textures and Lighting)
   - ✅ Step 13: Texture Loading - COMPLETE
   - ✅ Step 14: Texture Mapping - COMPLETE
-  - 📝 **Next**: Step 15: Lighting Basics
+  - ✅ Step 15: Lighting Basics - COMPLETE
+  - 📝 **Next**: Step 16: Materials (per roadmap)
 
 Recent commits show:
 - `011e2e4` - primitives working
@@ -112,13 +113,14 @@ Recent commits show:
 
 **Key features already in place:**
 - ✅ Vertex struct with position, color, normal, UV (mesh.rs)
-- ✅ All primitives: sphere, cube, cylinder, torus, plane with normals and UVs
+- ✅ All primitives: sphere, cube, cylinder, torus, plane with correct normals and UVs
 - ✅ Texture loading system (texture.rs)
 - ✅ Texture sampling in fragment shader
 - ✅ Shader utility methods: set_mat4, set_vec3, set_float, set_int, set_bool
 - ✅ Wireframe mode toggle (Key 1)
 - ✅ Texture toggle (Key 2)
-- ✅ Camera system with movement (WASDQE keys)
+- ✅ Camera system with movement (WASDQE) and look controls (Arrow keys)
+- ✅ Phong lighting (ambient + diffuse + specular)
 
 **Math library in use:**
 - Using `nalgebra-glm` (not `glam` as originally planned)
@@ -128,29 +130,35 @@ Recent commits show:
 
 ### When creating a new lesson or step guide:
 
-**CRITICAL: ALWAYS check the current state of the code first!**
+**CRITICAL: ALWAYS follow the roadmap and check the current state of the code first!**
 
-1. **Read the actual implementation files** before writing lesson content:
+1. **Follow the roadmap** (`docs/ROADMAP.md`):
+   - The roadmap defines the correct order of steps
+   - Each step is carefully sequenced to build on previous knowledge
+   - Do NOT deviate from the roadmap order unless explicitly requested by the student
+   - Check ROADMAP.md to confirm what the next step should be
+
+2. **Read the actual implementation files** before writing lesson content:
    - `rustgl/src/mesh.rs` - Check vertex structure, primitives, attributes
    - `rustgl/src/shader.rs` - Check what shader methods exist
    - `rustgl/src/main.rs` - Check current rendering setup
    - `rustgl/shader/basic.vert` and `rustgl/shader/basic.frag` - Check shader code
    - Other relevant files based on the lesson topic
 
-2. **Identify what's already implemented**:
+3. **Identify what's already implemented**:
    - The student may have already added features beyond the current step
    - Note which vertex attributes are already configured (position, color, normal, UV)
    - Check what shader uniforms and methods already exist
    - Identify what data structures are already in place
 
-3. **Write the lesson to match reality**:
+4. **Write the lesson to match reality**:
    - Mark already-completed tasks as ✅ "Already Done"
    - Focus lesson content on what ACTUALLY needs to be implemented
    - Provide accurate line numbers and code references
    - Update time estimates based on actual remaining work
    - Avoid teaching features that are already implemented
 
-4. **Example of good lesson structure**:
+5. **Example of good lesson structure**:
    ```markdown
    ## Current State Check
 
@@ -167,6 +175,23 @@ Recent commits show:
 
 ### When responding to the student:
 
+**Two modes of operation:**
+
+1. **Lesson Mode** (Default for learning steps):
+   - When student says "go to the next lesson" or "next step"
+   - **Generate the lesson guide** for them to implement
+   - Check current code state first
+   - Write the lesson with tasks for the student to complete
+   - Do NOT implement the code - let the student do it
+   - After student says "done" or "finished", review their implementation
+
+2. **Direct Implementation Mode**:
+   - When student asks for specific features/fixes (e.g., "add arrow key controls", "fix the cube normals")
+   - **Implement the requested feature directly**
+   - These are usually quality-of-life improvements or bug fixes
+   - Explain what you changed and why
+
+**Code Review Process:**
 1. **Assess current phase**: Check which step they're on
 2. **Review their code**: Look at implementation details
 3. **Provide constructive feedback**: Focus on:

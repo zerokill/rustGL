@@ -370,4 +370,4 @@ When you're done, show me:
 2. Any issues you encountered
 3. What you think of the difference lighting makes
 
-This is one of the most visually rewarding steps - your objects will finally look 3D! >€
+This is one of the most visually rewarding steps - your objects will finally look 3D! >ï¿½
