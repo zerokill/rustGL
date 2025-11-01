@@ -93,10 +93,13 @@ The project follows a **42-step learning path** organized into **8 phases**:
 ## Current Progress
 
 Based on git commits and the learning plan:
-- ✅ **Completed through Step 12** (Primitives working)
+- ✅ **Completed through Step 14** (Texture Mapping working)
 - ✅ Phase 1: Foundation - COMPLETE
 - ✅ Phase 2: Core Rendering - COMPLETE
-- 📝 **Ready for Phase 3**: Appearance (Textures and Lighting)
+- 🔄 **Phase 3 In Progress**: Appearance (Textures and Lighting)
+  - ✅ Step 13: Texture Loading - COMPLETE
+  - ✅ Step 14: Texture Mapping - COMPLETE
+  - 📝 **Next**: Step 15: Lighting Basics
 
 Recent commits show:
 - `011e2e4` - primitives working
@@ -105,7 +108,62 @@ Recent commits show:
 - `2c4d6cb` - lesson 11 camera ready
 - `a746c79` - transformations working
 
+## Current Implementation State
+
+**Key features already in place:**
+- ✅ Vertex struct with position, color, normal, UV (mesh.rs)
+- ✅ All primitives: sphere, cube, cylinder, torus, plane with normals and UVs
+- ✅ Texture loading system (texture.rs)
+- ✅ Texture sampling in fragment shader
+- ✅ Shader utility methods: set_mat4, set_vec3, set_float, set_int, set_bool
+- ✅ Wireframe mode toggle (Key 1)
+- ✅ Texture toggle (Key 2)
+- ✅ Camera system with movement (WASDQE keys)
+
+**Math library in use:**
+- Using `nalgebra-glm` (not `glam` as originally planned)
+- All matrix operations use `nalgebra_glm as glm`
+
 ## How to Assist
+
+### When creating a new lesson or step guide:
+
+**CRITICAL: ALWAYS check the current state of the code first!**
+
+1. **Read the actual implementation files** before writing lesson content:
+   - `rustgl/src/mesh.rs` - Check vertex structure, primitives, attributes
+   - `rustgl/src/shader.rs` - Check what shader methods exist
+   - `rustgl/src/main.rs` - Check current rendering setup
+   - `rustgl/shader/basic.vert` and `rustgl/shader/basic.frag` - Check shader code
+   - Other relevant files based on the lesson topic
+
+2. **Identify what's already implemented**:
+   - The student may have already added features beyond the current step
+   - Note which vertex attributes are already configured (position, color, normal, UV)
+   - Check what shader uniforms and methods already exist
+   - Identify what data structures are already in place
+
+3. **Write the lesson to match reality**:
+   - Mark already-completed tasks as ✅ "Already Done"
+   - Focus lesson content on what ACTUALLY needs to be implemented
+   - Provide accurate line numbers and code references
+   - Update time estimates based on actual remaining work
+   - Avoid teaching features that are already implemented
+
+4. **Example of good lesson structure**:
+   ```markdown
+   ## Current State Check
+
+   ✅ **Already implemented**: UV coordinates in Vertex struct (mesh.rs:11)
+   ✅ **Already implemented**: Vertex shader passes UVs (basic.vert:5)
+   ❌ **Still needed**: Fragment shader texture sampling
+   ❌ **Still needed**: Shader utility methods (set_int, set_bool)
+
+   ## Tasks
+
+   ### Task 1: Update Fragment Shader (NEW - needs implementation)
+   ...
+   ```
 
 ### When responding to the student:
 
