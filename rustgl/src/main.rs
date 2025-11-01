@@ -87,6 +87,10 @@ fn main() {
     let mut fps_timer = Instant::now();
     let mut time = 0.0f32;
 
+    // Rendering state toggles
+    let mut wireframe_mode = false;
+    let mut use_texture = true;
+
     // Window loop - keep the window open
     while !window.should_close() {
         // Frame timing - wait until target frame time has elapsed
@@ -112,7 +116,7 @@ fn main() {
             fps_timer = Instant::now();
         }
 
-        process_events(&mut window, &events, &mut camera, delta_time);
+        process_events(&mut window, &events, &mut camera, &mut wireframe_mode, &mut use_texture, delta_time);
         update(delta_time, &mut time);
         render(
             &mut window,
@@ -122,8 +126,11 @@ fn main() {
             &torus,
             &plane,
             &shader,
+            &texture,
             &camera,
             time,
+            wireframe_mode,
+            use_texture,
         );
     }
 }
@@ -132,13 +139,15 @@ fn process_events(
     window: &mut glfw::Window,
     events: &glfw::GlfwReceiver<(f64, glfw::WindowEvent)>,
     camera: &mut Camera,
+    wireframe_mode: &mut bool,
+    use_texture: &mut bool,
     delta_time: f32,
 ) {
     window.glfw.poll_events();
 
-    // Handle window events (resize, etc.)
+    // Handle window events (resize, key presses, etc.)
     for (_, event) in glfw::flush_messages(events) {
-        handle_window_event(window, event);
+        handle_window_event(window, event, wireframe_mode, use_texture);
     }
 
     // Process camera input EVERY FRAME (not event-based)
@@ -166,10 +175,20 @@ fn process_events(
 fn handle_window_event(
     window: &mut glfw::Window,
     event: glfw::WindowEvent,
+    wireframe_mode: &mut bool,
+    use_texture: &mut bool,
 ) {
     match event {
         glfw::WindowEvent::Key(Key::Escape, _, Action::Press, _) => {
             window.set_should_close(true);
+        }
+        glfw::WindowEvent::Key(Key::Num1, _, Action::Press, _) => {
+            *wireframe_mode = !*wireframe_mode;
+            println!("Wireframe mode: {}", if *wireframe_mode { "ON" } else { "OFF" });
+        }
+        glfw::WindowEvent::Key(Key::Num2, _, Action::Press, _) => {
+            *use_texture = !*use_texture;
+            println!("Texture: {}", if *use_texture { "ON" } else { "OFF" });
         }
         glfw::WindowEvent::FramebufferSize(width, height) => unsafe {
             gl::Viewport(0, 0, width, height);
@@ -200,8 +219,11 @@ fn render(
     torus: &Mesh,
     plane: &Mesh,
     shader: &Shader,
+    texture: &Texture,
     camera: &Camera,
     time: f32,
+    wireframe_mode: bool,
+    use_texture: bool,
 ) {
     unsafe {
         gl::Enable(gl::DEPTH_TEST);
@@ -209,7 +231,18 @@ fn render(
         gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
         check_gl_error("clear");
 
+        // Set polygon mode based on wireframe toggle
+        if wireframe_mode {
+            gl::PolygonMode(gl::FRONT_AND_BACK, gl::LINE);
+        } else {
+            gl::PolygonMode(gl::FRONT_AND_BACK, gl::FILL);
+        }
+
         shader.use_program();
+
+        texture.bind(0);                        // Bind to texture unit 0
+        shader.set_int("textureSampler", 0);    // Tell shader to use texture unit 0
+        shader.set_bool("useTexture", use_texture);  // Toggle texture based on key press
 
         let view = camera.get_view_matrix();
         shader.set_mat4("view", &view);

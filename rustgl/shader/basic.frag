@@ -3,8 +3,16 @@ in vec3 ourColor;
 in vec2 ourTexCoord;
 out vec4 FragColor;
 
+uniform sampler2D textureSampler;
+uniform bool useTexture;
+
 void main() {
-    // For now, just use the color. UV coordinates are available as ourTexCoord
-    // They can be used later for texturing
-    FragColor = vec4(ourColor, 1.0);
+    if (useTexture) {
+        // Sample texture and multiply by vertex color for tinting
+        vec4 texColor = texture(textureSampler, ourTexCoord);
+        FragColor = texColor;
+    } else {
+        // Use vertex color only (current behavior)
+        FragColor = vec4(ourColor, 1.0);
+    }
 }

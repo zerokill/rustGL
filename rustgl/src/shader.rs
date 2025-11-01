@@ -83,6 +83,18 @@ impl Shader {
         }
     }
 
+    pub fn set_int(&self, name: &str, value: i32) {
+        unsafe {
+            let c_name = CString::new(name).unwrap();
+            let location = gl::GetUniformLocation(self.id, c_name.as_ptr());
+            gl::Uniform1i(location, value);
+        }
+    }
+
+    pub fn set_bool(&self, name: &str, value: bool) {
+        self.set_int(name, value as i32);
+    }
+
     /// Compiles a shader from source code
     ///
     /// Private helper function (no `pub` keyword)
