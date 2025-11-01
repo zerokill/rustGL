@@ -2,6 +2,8 @@ use std::ffi::CString;
 use std::fs;
 use std::ptr;
 use nalgebra_glm as glm;
+use crate::material::Material;
+
 
 /// Manages a compiled and linked OpenGL shader program
 pub struct Shader {
@@ -93,6 +95,13 @@ impl Shader {
 
     pub fn set_bool(&self, name: &str, value: bool) {
         self.set_int(name, value as i32);
+    }
+
+    pub fn set_material(&self, material: &Material) {
+        self.set_vec3("material_ambient", &material.ambient);
+        self.set_vec3("material_diffuse", &material.diffuse);
+        self.set_vec3("material_specular", &material.specular);
+        self.set_float("material_shininess", material.shininess);
     }
 
     /// Compiles a shader from source code

@@ -5,6 +5,7 @@ mod shader;
 mod mesh;
 mod camera;
 mod texture;
+mod material;
 
 use glfw::{Action, Context, Key};
 use std::time::Instant;
@@ -13,6 +14,7 @@ use mesh::Mesh;
 use camera::{Camera, CameraMovement};
 use nalgebra_glm as glm;
 use texture::Texture;
+use material::Material;
 
 fn main() {
     // Initialize GLFW
@@ -77,6 +79,13 @@ fn main() {
     let texture = Texture::new("resources/textures/livia.png")
         .expect("Failed to load texture");
 
+    // Create materials (after creating meshes, before the render loop)
+    let plastic_material = Material::plastic(glm::vec3(0.3, 0.7, 1.0));  // Blue plastic
+    let metal_material = Material::metal(glm::vec3(1.0, 0.5, 0.2));     // Orange metal
+    let matte_material = Material::matte(glm::vec3(0.2, 1.0, 0.3));     // Green matte
+    let rubber_material = Material::rubber(glm::vec3(1.0, 0.3, 0.7));   // Pink rubber
+    let chrome_material = Material::chrome();                            // Chrome
+
     let mut camera = Camera::default();
 
     const TARGET_FPS: f32 = 60.0;
@@ -131,6 +140,11 @@ fn main() {
             time,
             wireframe_mode,
             use_texture,
+            &plastic_material,   // NEW
+            &metal_material,     // NEW
+            &matte_material,     // NEW
+            &rubber_material,    // NEW
+            &chrome_material,    // NEW
         );
     }
 }
@@ -241,6 +255,11 @@ fn render(
     time: f32,
     wireframe_mode: bool,
     use_texture: bool,
+    plastic_mat: &Material,    // NEW
+    metal_mat: &Material,      // NEW
+    matte_mat: &Material,      // NEW
+    rubber_mat: &Material,     // NEW
+    chrome_mat: &Material,     // NEW
 ) {
     unsafe {
         gl::Enable(gl::DEPTH_TEST);
@@ -280,12 +299,14 @@ fn render(
         shader.set_mat4("projection", &projection);
 
         // Draw plane (ground)
+        shader.set_material(matte_mat);
         let mut model = glm::Mat4::identity();
         model = glm::translate(&model, &glm::vec3(0.0, -2.0, 0.0));
         shader.set_mat4("model", &model);
         plane.draw();
 
         // Draw sphere (left, rotating)
+        shader.set_material(plastic_mat);
         let mut model = glm::Mat4::identity();
         model = glm::translate(&model, &glm::vec3(-4.0, 0.0, 0.0));
         model = glm::rotate(&model, time * 0.5, &glm::vec3(0.0, 1.0, 0.0));
@@ -294,6 +315,7 @@ fn render(
         sphere.draw();
 
         // Draw cube (center-left, rotating)
+        shader.set_material(metal_mat);
         let mut model = glm::Mat4::identity();
         model = glm::translate(&model, &glm::vec3(-2.0, 0.0, 0.0));
         model = glm::rotate(&model, time * 0.7, &glm::vec3(1.0, 1.0, 0.0));
@@ -301,6 +323,7 @@ fn render(
         cube.draw();
 
         // Draw cylinder (center, rotating)
+        shader.set_material(matte_mat);
         let mut model = glm::Mat4::identity();
         model = glm::translate(&model, &glm::vec3(0.0, 0.0, 0.0));
         model = glm::rotate(&model, time * 0.4, &glm::vec3(0.0, 1.0, 0.0));
@@ -309,6 +332,7 @@ fn render(
         cylinder.draw();
 
         // Draw torus (center-right, rotating)
+        shader.set_material(rubber_mat);
         let mut model = glm::Mat4::identity();
         model = glm::translate(&model, &glm::vec3(2.0, 0.0, 0.0));
         model = glm::rotate(&model, time * 0.6, &glm::vec3(1.0, 0.5, 0.0));
@@ -316,6 +340,7 @@ fn render(
         torus.draw();
 
         // Draw another sphere (right, different rotation)
+        shader.set_material(chrome_mat);
         let mut model = glm::Mat4::identity();
         model = glm::translate(&model, &glm::vec3(4.0, 0.0, 0.0));
         model = glm::rotate(&model, time * 0.8, &glm::vec3(0.5, 1.0, 0.5));
