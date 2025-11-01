@@ -152,6 +152,8 @@ fn process_events(
 
     // Process camera input EVERY FRAME (not event-based)
     // This ensures smooth, consistent movement
+
+    // WASD for movement (relative to camera orientation)
     if window.get_key(Key::W) == Action::Press {
         camera.process_keyboard(CameraMovement::Forward, delta_time);
     }
@@ -169,6 +171,21 @@ fn process_events(
     }
     if window.get_key(Key::E) == Action::Press {
         camera.process_keyboard(CameraMovement::Up, delta_time);
+    }
+
+    // Arrow keys for looking around
+    let look_speed = 250.0; // degrees per second
+    if window.get_key(Key::Left) == Action::Press {
+        camera.process_mouse_movement(-look_speed * delta_time, 0.0, true);
+    }
+    if window.get_key(Key::Right) == Action::Press {
+        camera.process_mouse_movement(look_speed * delta_time, 0.0, true);
+    }
+    if window.get_key(Key::Up) == Action::Press {
+        camera.process_mouse_movement(0.0, look_speed * delta_time, true);
+    }
+    if window.get_key(Key::Down) == Action::Press {
+        camera.process_mouse_movement(0.0, -look_speed * delta_time, true);
     }
 }
 
@@ -239,6 +256,13 @@ fn render(
         }
 
         shader.use_program();
+
+        // NEW: Set lighting uniforms
+        let light_pos = glm::vec3(5.0, 5.0, 5.0);           // Light position in world space
+        let light_color = glm::vec3(1.0, 1.0, 1.0);         // White light
+        shader.set_vec3("lightPos", &light_pos);
+        shader.set_vec3("viewPos", &camera.position);        // Camera position
+        shader.set_vec3("lightColor", &light_color);
 
         texture.bind(0);                        // Bind to texture unit 0
         shader.set_int("textureSampler", 0);    // Tell shader to use texture unit 0

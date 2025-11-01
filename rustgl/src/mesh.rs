@@ -107,36 +107,60 @@ impl Mesh {
 
     /// Creates a 3D cube mesh using indexed rendering
     pub fn cube(color: [f32; 3]) -> Self {
-        let normal = [0.0, 0.0, 1.0];  // We'll fix normals in lighting lesson
-
-        // 8 unique vertices for a cube
+        // For proper flat shading, each face needs its own vertices with correct normals
+        // This means 24 vertices total (4 vertices × 6 faces) instead of 8 shared vertices
         let vertices = vec![
-            // Front face
-            Vertex::new([-0.5, -0.5, 0.5], color, normal, [0.0, 0.0]),  // 0
-            Vertex::new([0.5, -0.5, 0.5], color, normal, [1.0, 0.0]),   // 1
-            Vertex::new([0.5, 0.5, 0.5], color, normal, [1.0, 1.0]),    // 2
-            Vertex::new([-0.5, 0.5, 0.5], color, normal, [0.0, 1.0]),   // 3
-            // Back face
-            Vertex::new([-0.5, -0.5, -0.5], color, normal, [1.0, 0.0]), // 4
-            Vertex::new([0.5, -0.5, -0.5], color, normal, [0.0, 0.0]),  // 5
-            Vertex::new([0.5, 0.5, -0.5], color, normal, [0.0, 1.0]),   // 6
-            Vertex::new([-0.5, 0.5, -0.5], color, normal, [1.0, 1.0]),  // 7
+            // Front face (normal pointing +Z)
+            Vertex::new([-0.5, -0.5, 0.5], color, [0.0, 0.0, 1.0], [0.0, 0.0]),  // 0
+            Vertex::new([0.5, -0.5, 0.5], color, [0.0, 0.0, 1.0], [1.0, 0.0]),   // 1
+            Vertex::new([0.5, 0.5, 0.5], color, [0.0, 0.0, 1.0], [1.0, 1.0]),    // 2
+            Vertex::new([-0.5, 0.5, 0.5], color, [0.0, 0.0, 1.0], [0.0, 1.0]),   // 3
+
+            // Back face (normal pointing -Z)
+            Vertex::new([0.5, -0.5, -0.5], color, [0.0, 0.0, -1.0], [0.0, 0.0]), // 4
+            Vertex::new([-0.5, -0.5, -0.5], color, [0.0, 0.0, -1.0], [1.0, 0.0]), // 5
+            Vertex::new([-0.5, 0.5, -0.5], color, [0.0, 0.0, -1.0], [1.0, 1.0]), // 6
+            Vertex::new([0.5, 0.5, -0.5], color, [0.0, 0.0, -1.0], [0.0, 1.0]),  // 7
+
+            // Right face (normal pointing +X)
+            Vertex::new([0.5, -0.5, 0.5], color, [1.0, 0.0, 0.0], [0.0, 0.0]),   // 8
+            Vertex::new([0.5, -0.5, -0.5], color, [1.0, 0.0, 0.0], [1.0, 0.0]),  // 9
+            Vertex::new([0.5, 0.5, -0.5], color, [1.0, 0.0, 0.0], [1.0, 1.0]),   // 10
+            Vertex::new([0.5, 0.5, 0.5], color, [1.0, 0.0, 0.0], [0.0, 1.0]),    // 11
+
+            // Left face (normal pointing -X)
+            Vertex::new([-0.5, -0.5, -0.5], color, [-1.0, 0.0, 0.0], [0.0, 0.0]), // 12
+            Vertex::new([-0.5, -0.5, 0.5], color, [-1.0, 0.0, 0.0], [1.0, 0.0]),  // 13
+            Vertex::new([-0.5, 0.5, 0.5], color, [-1.0, 0.0, 0.0], [1.0, 1.0]),   // 14
+            Vertex::new([-0.5, 0.5, -0.5], color, [-1.0, 0.0, 0.0], [0.0, 1.0]),  // 15
+
+            // Top face (normal pointing +Y)
+            Vertex::new([-0.5, 0.5, 0.5], color, [0.0, 1.0, 0.0], [0.0, 0.0]),   // 16
+            Vertex::new([0.5, 0.5, 0.5], color, [0.0, 1.0, 0.0], [1.0, 0.0]),    // 17
+            Vertex::new([0.5, 0.5, -0.5], color, [0.0, 1.0, 0.0], [1.0, 1.0]),   // 18
+            Vertex::new([-0.5, 0.5, -0.5], color, [0.0, 1.0, 0.0], [0.0, 1.0]),  // 19
+
+            // Bottom face (normal pointing -Y)
+            Vertex::new([-0.5, -0.5, -0.5], color, [0.0, -1.0, 0.0], [0.0, 0.0]), // 20
+            Vertex::new([0.5, -0.5, -0.5], color, [0.0, -1.0, 0.0], [1.0, 0.0]),  // 21
+            Vertex::new([0.5, -0.5, 0.5], color, [0.0, -1.0, 0.0], [1.0, 1.0]),   // 22
+            Vertex::new([-0.5, -0.5, 0.5], color, [0.0, -1.0, 0.0], [0.0, 1.0]),  // 23
         ];
 
-        // 36 indices for 12 triangles (6 faces � 2 triangles)
+        // 36 indices for 12 triangles (6 faces × 2 triangles)
         let indices = vec![
-            // Front
+            // Front face
             0, 1, 2, 2, 3, 0,
-            // Right
-            1, 5, 6, 6, 2, 1,
-            // Back
-            5, 4, 7, 7, 6, 5,
-            // Left
-            4, 0, 3, 3, 7, 4,
-            // Top
-            3, 2, 6, 6, 7, 3,
-            // Bottom
-            4, 5, 1, 1, 0, 4,
+            // Back face
+            4, 5, 6, 6, 7, 4,
+            // Right face
+            8, 9, 10, 10, 11, 8,
+            // Left face
+            12, 13, 14, 14, 15, 12,
+            // Top face
+            16, 17, 18, 18, 19, 16,
+            // Bottom face
+            20, 21, 22, 22, 23, 20,
         ];
 
         Mesh::new_indexed(&vertices, &indices)
