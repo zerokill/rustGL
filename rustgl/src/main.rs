@@ -4,6 +4,7 @@ extern crate glfw;
 mod shader;
 mod mesh;
 mod camera;
+mod texture;
 
 use glfw::{Action, Context, Key};
 use std::time::Instant;
@@ -11,6 +12,7 @@ use shader::Shader;
 use mesh::Mesh;
 use camera::{Camera, CameraMovement};
 use nalgebra_glm as glm;
+use texture::Texture;
 
 fn main() {
     // Initialize GLFW
@@ -71,6 +73,9 @@ fn main() {
     let plane = Mesh::plane(10.0, 10.0, [0.3, 0.3, 0.3]);  // Gray plane
 
     let shader = Shader::new("shader/basic.vert", "shader/basic.frag");
+    // Load a test texture
+    let texture = Texture::new("resources/textures/livia.png")
+        .expect("Failed to load texture");
 
     let mut camera = Camera::default();
 
