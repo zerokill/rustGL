@@ -93,14 +93,16 @@ The project follows a **42-step learning path** organized into **8 phases**:
 ## Current Progress
 
 Based on git commits and the learning plan:
-- ✅ **Completed through Step 15** (Phong Lighting working)
+- ✅ **Completed through Step 17** (Multiple Lights working)
 - ✅ Phase 1: Foundation - COMPLETE
 - ✅ Phase 2: Core Rendering - COMPLETE
-- 🔄 **Phase 3 In Progress**: Appearance (Textures and Lighting)
+- ✅ **Phase 3: Appearance - COMPLETE**
   - ✅ Step 13: Texture Loading - COMPLETE
   - ✅ Step 14: Texture Mapping - COMPLETE
   - ✅ Step 15: Lighting Basics - COMPLETE
-  - 📝 **Next**: Step 16: Materials (per roadmap)
+  - ✅ Step 16: Materials - COMPLETE
+  - ✅ Step 17: Multiple Lights - COMPLETE
+- 📝 **Next**: Step 18: Skybox (Phase 4: Advanced Effects)
 
 Recent commits show:
 - `011e2e4` - primitives working
@@ -116,11 +118,15 @@ Recent commits show:
 - ✅ All primitives: sphere, cube, cylinder, torus, plane with correct normals and UVs
 - ✅ Texture loading system (texture.rs)
 - ✅ Texture sampling in fragment shader
-- ✅ Shader utility methods: set_mat4, set_vec3, set_float, set_int, set_bool
+- ✅ Shader utility methods: set_mat4, set_vec3, set_float, set_int, set_bool, set_material, set_light, set_lights
 - ✅ Wireframe mode toggle (Key 1)
 - ✅ Texture toggle (Key 2)
 - ✅ Camera system with movement (WASDQE) and look controls (Arrow keys)
 - ✅ Phong lighting (ambient + diffuse + specular)
+- ✅ Material system with ambient, diffuse, specular, shininess properties
+- ✅ Material presets: plastic, metal, matte, rubber, chrome
+- ✅ Multiple point lights (up to 4) with attenuation
+- ✅ Light system with position, color, and range presets (short/medium/long/very long)
 
 **Math library in use:**
 - Using `nalgebra-glm` (not `glam` as originally planned)
