@@ -90,25 +90,25 @@ fn main() {
 
     // Create lights (after creating materials, before the render loop)
     let lights = vec![
-        // White light above and to the right
+        // White light above and to the right (brighter main light)
         Light::long_range(
             glm::vec3(5.0, 5.0, 5.0),
-            glm::vec3(1.0, 1.0, 1.0),  // White
+            glm::vec3(5.0, 5.0, 5.0),  // White (5x brighter)
         ),
         // Red light on the left
         Light::medium_range(
             glm::vec3(-5.0, 2.0, 0.0),
-            glm::vec3(1.0, 0.2, 0.2),  // Red
+            glm::vec3(4.0, 0.6, 0.6),  // Red (2x brighter)
         ),
         // Blue light on the right
         Light::medium_range(
             glm::vec3(5.0, 2.0, -3.0),
-            glm::vec3(0.2, 0.4, 1.0),  // Blue
+            glm::vec3(0.6, 1.2, 4.0),  // Blue (2x brighter)
         ),
         // Green light in front (subtle)
         Light::short_range(
             glm::vec3(0.0, 1.0, 5.0),
-            glm::vec3(0.3, 1.0, 0.3),  // Green
+            glm::vec3(1.0, 3.0, 1.0),  // Green (2x brighter)
         ),
     ];
 
