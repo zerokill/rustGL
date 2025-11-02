@@ -6,6 +6,7 @@ mod mesh;
 mod camera;
 mod texture;
 mod material;
+mod light;
 
 use glfw::{Action, Context, Key};
 use std::time::Instant;
@@ -15,6 +16,7 @@ use camera::{Camera, CameraMovement};
 use nalgebra_glm as glm;
 use texture::Texture;
 use material::Material;
+use light::Light;
 
 fn main() {
     // Initialize GLFW
@@ -86,6 +88,30 @@ fn main() {
     let rubber_material = Material::rubber(glm::vec3(1.0, 0.3, 0.7));   // Pink rubber
     let chrome_material = Material::chrome();                            // Chrome
 
+    // Create lights (after creating materials, before the render loop)
+    let lights = vec![
+        // White light above and to the right
+        Light::long_range(
+            glm::vec3(5.0, 5.0, 5.0),
+            glm::vec3(1.0, 1.0, 1.0),  // White
+        ),
+        // Red light on the left
+        Light::medium_range(
+            glm::vec3(-5.0, 2.0, 0.0),
+            glm::vec3(1.0, 0.2, 0.2),  // Red
+        ),
+        // Blue light on the right
+        Light::medium_range(
+            glm::vec3(5.0, 2.0, -3.0),
+            glm::vec3(0.2, 0.4, 1.0),  // Blue
+        ),
+        // Green light in front (subtle)
+        Light::short_range(
+            glm::vec3(0.0, 1.0, 5.0),
+            glm::vec3(0.3, 1.0, 0.3),  // Green
+        ),
+    ];
+
     let mut camera = Camera::default();
 
     const TARGET_FPS: f32 = 60.0;
@@ -145,6 +171,7 @@ fn main() {
             &matte_material,     // NEW
             &rubber_material,    // NEW
             &chrome_material,    // NEW
+            &lights,
         );
     }
 }
@@ -260,6 +287,7 @@ fn render(
     matte_mat: &Material,      // NEW
     rubber_mat: &Material,     // NEW
     chrome_mat: &Material,     // NEW
+    lights: &[Light],
 ) {
     unsafe {
         gl::Enable(gl::DEPTH_TEST);
@@ -276,12 +304,8 @@ fn render(
 
         shader.use_program();
 
-        // NEW: Set lighting uniforms
-        let light_pos = glm::vec3(5.0, 5.0, 5.0);           // Light position in world space
-        let light_color = glm::vec3(1.0, 1.0, 1.0);         // White light
-        shader.set_vec3("lightPos", &light_pos);
-        shader.set_vec3("viewPos", &camera.position);        // Camera position
-        shader.set_vec3("lightColor", &light_color);
+        shader.set_vec3("viewPos", &camera.position);
+        shader.set_lights(lights);
 
         texture.bind(0);                        // Bind to texture unit 0
         shader.set_int("textureSampler", 0);    // Tell shader to use texture unit 0

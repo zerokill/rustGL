@@ -3,6 +3,7 @@ use std::fs;
 use std::ptr;
 use nalgebra_glm as glm;
 use crate::material::Material;
+use crate::light::Light;
 
 
 /// Manages a compiled and linked OpenGL shader program
@@ -102,6 +103,26 @@ impl Shader {
         self.set_vec3("material_diffuse", &material.diffuse);
         self.set_vec3("material_specular", &material.specular);
         self.set_float("material_shininess", material.shininess);
+    }
+
+    pub fn set_light(&self, index: usize, light: &Light) {
+        let base = format!("lights[{}]", index);
+        self.set_vec3(&format!("{}.position", base), &light.position);
+        self.set_vec3(&format!("{}.color", base), &light.color);
+        self.set_float(&format!("{}.constant", base), light.constant);
+        self.set_float(&format!("{}.linear", base), light.linear);
+        self.set_float(&format!("{}.quadratic", base), light.quadratic);
+    }
+
+    /// Sets all lights from a slice
+    pub fn set_lights(&self, lights: &[Light]) {
+        self.set_int("numLights", lights.len() as i32);
+        for (i, light) in lights.iter().enumerate() {
+            if i >= 4 {  // MAX_LIGHTS
+                break;
+            }
+            self.set_light(i, light);
+        }
     }
 
     /// Compiles a shader from source code
