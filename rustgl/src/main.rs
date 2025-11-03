@@ -7,6 +7,8 @@ mod material;
 mod mesh;
 mod shader;
 mod texture;
+mod transform;
+mod scene;
 
 use camera::{Camera, CameraMovement};
 use glfw::{Action, Context, Key};
@@ -17,6 +19,8 @@ use nalgebra_glm as glm;
 use shader::Shader;
 use std::time::Instant;
 use texture::Texture;
+use transform::Transform;
+use scene::Scene;
 
 fn main() {
     // Initialize GLFW
@@ -69,47 +73,69 @@ fn main() {
         println!("OpenGL Version: {}", version.to_str().unwrap());
     }
 
-    // Create all primitive shapes
-    let sphere = Mesh::sphere(1.0, 32, 16, [0.3, 0.7, 1.0]); // Blue sphere
-    let cube = Mesh::cube([1.0, 0.5, 0.2]); // Orange cube
-    let cylinder = Mesh::cylinder(0.5, 2.0, 32, [0.2, 1.0, 0.3]); // Green cylinder
-    let torus = Mesh::torus(1.0, 0.3, 32, 16, [1.0, 0.3, 0.7]); // Pink torus
-    let plane = Mesh::plane(10.0, 10.0, [0.3, 0.3, 0.3]); // Gray plane
-
     let shader = Shader::new("shader/basic.vert", "shader/basic.frag");
     // Load a test texture
     let texture = Texture::new("resources/textures/livia.png").expect("Failed to load texture");
+    let mut scene = Scene::new();
 
-    // Create materials (after creating meshes, before the render loop)
-    let plastic_material = Material::plastic(glm::vec3(0.3, 0.7, 1.0)); // Blue plastic
-    let metal_material = Material::metal(glm::vec3(1.0, 0.5, 0.2)); // Orange metal
-    let matte_material = Material::matte(glm::vec3(0.2, 1.0, 0.3)); // Green matte
-    let rubber_material = Material::rubber(glm::vec3(1.0, 0.3, 0.7)); // Pink rubber
-    let chrome_material = Material::chrome(); // Chrome
+    scene.add_object(
+        Mesh::plane(10.0, 10.0, [0.3, 0.3, 0.3]),
+        Material::matte(glm::vec3(0.2, 1.0, 0.3)),
+        Transform::from_position(glm::vec3(0.0, -2.0, 0.0)),
+    );
 
-    // Create lights (after creating materials, before the render loop)
-    let lights = vec![
-        // White light above and to the right (brighter main light)
-        Light::long_range(
-            glm::vec3(5.0, 5.0, 5.0),
-            glm::vec3(5.0, 5.0, 5.0), // White (5x brighter)
-        ),
-        // Red light on the left
-        Light::medium_range(
-            glm::vec3(-5.0, 2.0, 0.0),
-            glm::vec3(4.0, 0.6, 0.6), // Red (2x brighter)
-        ),
-        // Blue light on the right
-        Light::medium_range(
-            glm::vec3(5.0, 2.0, -3.0),
-            glm::vec3(0.6, 1.2, 4.0), // Blue (2x brighter)
-        ),
-        // Green light in front (subtle)
-        Light::short_range(
-            glm::vec3(0.0, 1.0, 5.0),
-            glm::vec3(1.0, 3.0, 1.0), // Green (2x brighter)
-        ),
-    ];
+    // Add rotating sphere (left)
+    scene.add_object(
+        Mesh::sphere(1.0, 32, 16, [0.3, 0.7, 1.0]),
+        Material::plastic(glm::vec3(0.3, 0.7, 1.0)),
+        Transform::from_position(glm::vec3(-4.0, 0.0, 0.0)),
+    );
+
+    // Add rotating cube (center-left)
+    scene.add_object(
+        Mesh::cube([1.0, 0.5, 0.2]),
+        Material::metal(glm::vec3(1.0, 0.5, 0.2)),
+        Transform::from_position(glm::vec3(-2.0, 0.0, 0.0)),
+    );
+
+    // Add rotating cylinder (center)
+    scene.add_object(
+        Mesh::cylinder(0.5, 2.0, 32, [0.2, 1.0, 0.3]),
+        Material::matte(glm::vec3(0.2, 1.0, 0.3)),
+        Transform::from_position(glm::vec3(0.0, 0.0, 0.0)),
+    );
+
+    // Add rotating torus (center-right)
+    scene.add_object(
+        Mesh::torus(1.0, 0.3, 32, 16, [1.0, 0.3, 0.7]),
+        Material::rubber(glm::vec3(1.0, 0.3, 0.7)),
+        Transform::from_position(glm::vec3(2.0, 0.0, 0.0)),
+    );
+
+    // Add small chrome sphere (right)
+    scene.add_object(
+        Mesh::sphere(1.0, 32, 16, [0.8, 0.8, 0.8]),
+        Material::chrome(),
+        Transform::from_position_scale(glm::vec3(4.0, 0.0, 0.0), glm::vec3(0.8, 0.8, 0.8)),
+    );
+
+    // Add lights
+    scene.add_light(Light::long_range(
+        glm::vec3(5.0, 5.0, 5.0),
+        glm::vec3(5.0, 5.0, 5.0),
+    ));
+    scene.add_light(Light::medium_range(
+        glm::vec3(-5.0, 2.0, 0.0),
+        glm::vec3(4.0, 0.6, 0.6),
+    ));
+    scene.add_light(Light::medium_range(
+        glm::vec3(5.0, 2.0, -3.0),
+        glm::vec3(0.6, 1.2, 4.0),
+    ));
+    scene.add_light(Light::short_range(
+        glm::vec3(0.0, 1.0, 5.0),
+        glm::vec3(1.0, 3.0, 1.0),
+    ));
 
     let mut camera = Camera::default();
 
@@ -158,26 +184,15 @@ fn main() {
             &mut use_texture,
             delta_time,
         );
-        update(delta_time, &mut time);
+        update(delta_time, &mut time, &mut scene);
         render(
             &mut window,
-            &sphere,
-            &cube,
-            &cylinder,
-            &torus,
-            &plane,
+            &scene,
             &shader,
             &texture,
             &camera,
-            time,
             wireframe_mode,
             use_texture,
-            &plastic_material, // NEW
-            &metal_material,   // NEW
-            &matte_material,   // NEW
-            &rubber_material,  // NEW
-            &chrome_material,  // NEW
-            &lights,
         );
     }
 }
@@ -273,30 +288,44 @@ fn check_gl_error(location: &str) {
     }
 }
 
-fn update(delta_time: f32, time: &mut f32) {
+fn update(delta_time: f32, time: &mut f32, scene: &mut Scene) {
     // Game logic
     *time += delta_time;
+
+    // Animate objects by updating their transforms
+    // Object indices: 0=plane, 1=sphere, 2=cube, 3=cylinder, 4=torus, 5=chrome sphere
+
+    if let Some(sphere) = scene.get_object_mut(1) {
+        sphere.transform.rotate(0.0, 0.5 * delta_time, 0.0);
+        sphere.transform.rotate_x(0.3 * delta_time);
+    }
+
+    if let Some(cube) = scene.get_object_mut(2) {
+        cube.transform.rotate(0.7 * delta_time, 0.7 * delta_time, 0.0);
+    }
+
+    if let Some(cylinder) = scene.get_object_mut(3) {
+        cylinder.transform.rotate(0.3 * delta_time, 0.4 * delta_time, 0.0);
+    }
+
+    if let Some(torus) = scene.get_object_mut(4) {
+        torus.transform.rotate(0.0, 0.6 * delta_time, 0.0);
+        torus.transform.rotate_x(0.6 * delta_time * 0.5);
+    }
+
+    if let Some(chrome_sphere) = scene.get_object_mut(5) {
+        chrome_sphere.transform.rotate(0.8 * delta_time * 0.5, 0.8 * delta_time, 0.8 * delta_time * 0.5);
+    }
 }
 
 fn render(
     window: &mut glfw::Window,
-    sphere: &Mesh,
-    cube: &Mesh,
-    cylinder: &Mesh,
-    torus: &Mesh,
-    plane: &Mesh,
+    scene: &Scene,
     shader: &Shader,
     texture: &Texture,
     camera: &Camera,
-    time: f32,
     wireframe_mode: bool,
     use_texture: bool,
-    plastic_mat: &Material, // NEW
-    metal_mat: &Material,   // NEW
-    matte_mat: &Material,   // NEW
-    rubber_mat: &Material,  // NEW
-    chrome_mat: &Material,  // NEW
-    lights: &[Light],
 ) {
     unsafe {
         gl::Enable(gl::DEPTH_TEST);
@@ -313,68 +342,17 @@ fn render(
 
         shader.use_program();
 
+        // Set camera-related uniforms
         shader.set_vec3("viewPos", &camera.position);
-        shader.set_lights(lights);
 
         texture.bind(0); // Bind to texture unit 0
         shader.set_int("textureSampler", 0); // Tell shader to use texture unit 0
         shader.set_bool("useTexture", use_texture); // Toggle texture based on key press
 
         let view = camera.get_view_matrix();
-        shader.set_mat4("view", &view);
-
         let projection = glm::perspective(1024.0 / 768.0, camera.zoom.to_radians(), 0.1, 100.0);
-        shader.set_mat4("projection", &projection);
 
-        // Draw plane (ground)
-        shader.set_material(matte_mat);
-        let mut model = glm::Mat4::identity();
-        model = glm::translate(&model, &glm::vec3(0.0, -2.0, 0.0));
-        shader.set_mat4("model", &model);
-        plane.draw();
-
-        // Draw sphere (left, rotating)
-        shader.set_material(plastic_mat);
-        let mut model = glm::Mat4::identity();
-        model = glm::translate(&model, &glm::vec3(-4.0, 0.0, 0.0));
-        model = glm::rotate(&model, time * 0.5, &glm::vec3(0.0, 1.0, 0.0));
-        model = glm::rotate(&model, time * 0.3, &glm::vec3(1.0, 0.0, 0.0));
-        shader.set_mat4("model", &model);
-        sphere.draw();
-
-        // Draw cube (center-left, rotating)
-        shader.set_material(metal_mat);
-        let mut model = glm::Mat4::identity();
-        model = glm::translate(&model, &glm::vec3(-2.0, 0.0, 0.0));
-        model = glm::rotate(&model, time * 0.7, &glm::vec3(1.0, 1.0, 0.0));
-        shader.set_mat4("model", &model);
-        cube.draw();
-
-        // Draw cylinder (center, rotating)
-        shader.set_material(matte_mat);
-        let mut model = glm::Mat4::identity();
-        model = glm::translate(&model, &glm::vec3(0.0, 0.0, 0.0));
-        model = glm::rotate(&model, time * 0.4, &glm::vec3(0.0, 1.0, 0.0));
-        model = glm::rotate(&model, time * 0.3, &glm::vec3(1.0, 0.0, 0.0));
-        shader.set_mat4("model", &model);
-        cylinder.draw();
-
-        // Draw torus (center-right, rotating)
-        shader.set_material(rubber_mat);
-        let mut model = glm::Mat4::identity();
-        model = glm::translate(&model, &glm::vec3(2.0, 0.0, 0.0));
-        model = glm::rotate(&model, time * 0.6, &glm::vec3(1.0, 0.5, 0.0));
-        shader.set_mat4("model", &model);
-        torus.draw();
-
-        // Draw another sphere (right, different rotation)
-        shader.set_material(chrome_mat);
-        let mut model = glm::Mat4::identity();
-        model = glm::translate(&model, &glm::vec3(4.0, 0.0, 0.0));
-        model = glm::rotate(&model, time * 0.8, &glm::vec3(0.5, 1.0, 0.5));
-        model = glm::scale(&model, &glm::vec3(0.8, 0.8, 0.8));
-        shader.set_mat4("model", &model);
-        sphere.draw();
+        scene.render(&shader, &view, &projection);
     }
     window.swap_buffers();
 }
