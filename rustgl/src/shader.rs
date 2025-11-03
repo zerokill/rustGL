@@ -1,14 +1,13 @@
+use crate::light::Light;
+use crate::material::Material;
+use nalgebra_glm as glm;
 use std::ffi::CString;
 use std::fs;
 use std::ptr;
-use nalgebra_glm as glm;
-use crate::material::Material;
-use crate::light::Light;
-
 
 /// Manages a compiled and linked OpenGL shader program
 pub struct Shader {
-    pub id: u32,  // OpenGL program ID
+    pub id: u32, // OpenGL program ID
 }
 
 impl Shader {
@@ -25,8 +24,10 @@ impl Shader {
         let vertex_src = fs::read_to_string(vertex_path)
             .expect(&format!("Failed to read vertex shader: {}", vertex_path));
 
-        let fragment_src = fs::read_to_string(fragment_path)
-            .expect(&format!("Failed to read fragment shader: {}", fragment_path));
+        let fragment_src = fs::read_to_string(fragment_path).expect(&format!(
+            "Failed to read fragment shader: {}",
+            fragment_path
+        ));
 
         unsafe {
             // Compile shaders
@@ -61,12 +62,7 @@ impl Shader {
         unsafe {
             let c_name = CString::new(name).unwrap();
             let location = gl::GetUniformLocation(self.id, c_name.as_ptr());
-            gl::UniformMatrix4fv(
-                location,
-                1,
-                gl::FALSE,
-                matrix.as_ptr(),
-            );
+            gl::UniformMatrix4fv(location, 1, gl::FALSE, matrix.as_ptr());
         }
     }
 
@@ -118,7 +114,8 @@ impl Shader {
     pub fn set_lights(&self, lights: &[Light]) {
         self.set_int("numLights", lights.len() as i32);
         for (i, light) in lights.iter().enumerate() {
-            if i >= 4 {  // MAX_LIGHTS
+            if i >= 4 {
+                // MAX_LIGHTS
                 break;
             }
             self.set_light(i, light);
@@ -150,12 +147,7 @@ impl Shader {
             gl::GetShaderiv(shader, gl::INFO_LOG_LENGTH, &mut len);
 
             let mut buffer = vec![0u8; len as usize];
-            gl::GetShaderInfoLog(
-                shader,
-                len,
-                ptr::null_mut(),
-                buffer.as_mut_ptr() as *mut i8,
-            );
+            gl::GetShaderInfoLog(shader, len, ptr::null_mut(), buffer.as_mut_ptr() as *mut i8);
 
             let shader_type_str = if shader_type == gl::VERTEX_SHADER {
                 "VERTEX"
@@ -204,4 +196,3 @@ impl Drop for Shader {
         }
     }
 }
-

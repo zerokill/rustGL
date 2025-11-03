@@ -5,16 +5,21 @@ use std::ptr;
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
 pub struct Vertex {
-    pub position: [f32; 3],  // x, y, z
-    pub color: [f32; 3],     // r, g, b
-    pub normal: [f32; 3],    // nx, ny, nz
-    pub uv: [f32; 2],        // u, v (texture coordinates)
+    pub position: [f32; 3], // x, y, z
+    pub color: [f32; 3],    // r, g, b
+    pub normal: [f32; 3],   // nx, ny, nz
+    pub uv: [f32; 2],       // u, v (texture coordinates)
 }
 
 impl Vertex {
     /// Creates a new vertex with position, color, normal, and UV coordinates
     pub fn new(position: [f32; 3], color: [f32; 3], normal: [f32; 3], uv: [f32; 2]) -> Self {
-        Vertex { position, color, normal, uv }
+        Vertex {
+            position,
+            color,
+            normal,
+            uv,
+        }
     }
 }
 
@@ -30,7 +35,7 @@ pub struct Mesh {
 impl Mesh {
     /// Creates a colored triangle mesh
     pub fn triangle(color: [f32; 3]) -> Self {
-        let normal = [0.0, 0.0, 1.0];  // Facing camera
+        let normal = [0.0, 0.0, 1.0]; // Facing camera
         let vertices = vec![
             Vertex::new([-0.5, -0.5, 0.0], color, normal, [0.0, 0.0]),
             Vertex::new([0.5, -0.5, 0.0], color, normal, [1.0, 0.0]),
@@ -43,14 +48,14 @@ impl Mesh {
     pub fn quad(color: [f32; 3]) -> Self {
         let normal = [0.0, 0.0, 1.0];
         let vertices = vec![
-            Vertex::new([-0.5, -0.5, 0.0], color, normal, [0.0, 0.0]),  // 0: Bottom left
-            Vertex::new([0.5, -0.5, 0.0], color, normal, [1.0, 0.0]),   // 1: Bottom right
-            Vertex::new([0.5, 0.5, 0.0], color, normal, [1.0, 1.0]),    // 2: Top right
-            Vertex::new([-0.5, 0.5, 0.0], color, normal, [0.0, 1.0]),   // 3: Top left
+            Vertex::new([-0.5, -0.5, 0.0], color, normal, [0.0, 0.0]), // 0: Bottom left
+            Vertex::new([0.5, -0.5, 0.0], color, normal, [1.0, 0.0]),  // 1: Bottom right
+            Vertex::new([0.5, 0.5, 0.0], color, normal, [1.0, 1.0]),   // 2: Top right
+            Vertex::new([-0.5, 0.5, 0.0], color, normal, [0.0, 1.0]),  // 3: Top left
         ];
         let indices = vec![
-            0, 1, 2,  // First triangle
-            2, 3, 0,  // Second triangle
+            0, 1, 2, // First triangle
+            2, 3, 0, // Second triangle
         ];
         Mesh::new_indexed(&vertices, &indices)
     }
@@ -59,10 +64,10 @@ impl Mesh {
     pub fn quad_gradient() -> Self {
         let normal = [0.0, 0.0, 1.0];
         let vertices = vec![
-            Vertex::new([-0.5, -0.5, 0.0], [1.0, 0.0, 0.0], normal, [0.0, 0.0]),  // Red
-            Vertex::new([0.5, -0.5, 0.0], [0.0, 1.0, 0.0], normal, [1.0, 0.0]),   // Green
-            Vertex::new([0.5, 0.5, 0.0], [0.0, 0.0, 1.0], normal, [1.0, 1.0]),    // Blue
-            Vertex::new([-0.5, 0.5, 0.0], [1.0, 1.0, 0.0], normal, [0.0, 1.0]),   // Yellow
+            Vertex::new([-0.5, -0.5, 0.0], [1.0, 0.0, 0.0], normal, [0.0, 0.0]), // Red
+            Vertex::new([0.5, -0.5, 0.0], [0.0, 1.0, 0.0], normal, [1.0, 0.0]),  // Green
+            Vertex::new([0.5, 0.5, 0.0], [0.0, 0.0, 1.0], normal, [1.0, 1.0]),   // Blue
+            Vertex::new([-0.5, 0.5, 0.0], [1.0, 1.0, 0.0], normal, [0.0, 1.0]),  // Yellow
         ];
         let indices = vec![0, 1, 2, 2, 3, 0];
         Mesh::new_indexed(&vertices, &indices)
@@ -72,9 +77,24 @@ impl Mesh {
     pub fn triangle_at(color: [f32; 3], offset_x: f32, offset_y: f32) -> Self {
         let normal = [0.0, 0.0, 1.0];
         let vertices = vec![
-            Vertex::new([-0.3 + offset_x, -0.3 + offset_y, 0.0], color, normal, [0.0, 0.0]),
-            Vertex::new([0.3 + offset_x, -0.3 + offset_y, 0.0], color, normal, [1.0, 0.0]),
-            Vertex::new([0.0 + offset_x, 0.3 + offset_y, 0.0], color, normal, [0.5, 1.0]),
+            Vertex::new(
+                [-0.3 + offset_x, -0.3 + offset_y, 0.0],
+                color,
+                normal,
+                [0.0, 0.0],
+            ),
+            Vertex::new(
+                [0.3 + offset_x, -0.3 + offset_y, 0.0],
+                color,
+                normal,
+                [1.0, 0.0],
+            ),
+            Vertex::new(
+                [0.0 + offset_x, 0.3 + offset_y, 0.0],
+                color,
+                normal,
+                [0.5, 1.0],
+            ),
         ];
         Mesh::new(&vertices)
     }
@@ -83,10 +103,30 @@ impl Mesh {
     pub fn quad_at(color: [f32; 3], offset_x: f32, offset_y: f32) -> Self {
         let normal = [0.0, 0.0, 1.0];
         let vertices = vec![
-            Vertex::new([-0.3 + offset_x, -0.3 + offset_y, 0.0], color, normal, [0.0, 0.0]),  // Bottom left
-            Vertex::new([0.3 + offset_x, -0.3 + offset_y, 0.0], color, normal, [1.0, 0.0]),   // Bottom right
-            Vertex::new([0.3 + offset_x, 0.3 + offset_y, 0.0], color, normal, [1.0, 1.0]),    // Top right
-            Vertex::new([-0.3 + offset_x, 0.3 + offset_y, 0.0], color, normal, [0.0, 1.0]),   // Top left
+            Vertex::new(
+                [-0.3 + offset_x, -0.3 + offset_y, 0.0],
+                color,
+                normal,
+                [0.0, 0.0],
+            ), // Bottom left
+            Vertex::new(
+                [0.3 + offset_x, -0.3 + offset_y, 0.0],
+                color,
+                normal,
+                [1.0, 0.0],
+            ), // Bottom right
+            Vertex::new(
+                [0.3 + offset_x, 0.3 + offset_y, 0.0],
+                color,
+                normal,
+                [1.0, 1.0],
+            ), // Top right
+            Vertex::new(
+                [-0.3 + offset_x, 0.3 + offset_y, 0.0],
+                color,
+                normal,
+                [0.0, 1.0],
+            ), // Top left
         ];
         let indices = vec![0, 1, 2, 2, 3, 0];
         Mesh::new_indexed(&vertices, &indices)
@@ -96,10 +136,30 @@ impl Mesh {
     pub fn quad_gradient_at(offset_x: f32, offset_y: f32) -> Self {
         let normal = [0.0, 0.0, 1.0];
         let vertices = vec![
-            Vertex::new([-0.3 + offset_x, -0.3 + offset_y, 0.0], [1.0, 0.0, 0.0], normal, [0.0, 0.0]),  // Red
-            Vertex::new([0.3 + offset_x, -0.3 + offset_y, 0.0], [0.0, 1.0, 0.0], normal, [1.0, 0.0]),   // Green
-            Vertex::new([0.3 + offset_x, 0.3 + offset_y, 0.0], [0.0, 0.0, 1.0], normal, [1.0, 1.0]),    // Blue
-            Vertex::new([-0.3 + offset_x, 0.3 + offset_y, 0.0], [1.0, 1.0, 0.0], normal, [0.0, 1.0]),   // Yellow
+            Vertex::new(
+                [-0.3 + offset_x, -0.3 + offset_y, 0.0],
+                [1.0, 0.0, 0.0],
+                normal,
+                [0.0, 0.0],
+            ), // Red
+            Vertex::new(
+                [0.3 + offset_x, -0.3 + offset_y, 0.0],
+                [0.0, 1.0, 0.0],
+                normal,
+                [1.0, 0.0],
+            ), // Green
+            Vertex::new(
+                [0.3 + offset_x, 0.3 + offset_y, 0.0],
+                [0.0, 0.0, 1.0],
+                normal,
+                [1.0, 1.0],
+            ), // Blue
+            Vertex::new(
+                [-0.3 + offset_x, 0.3 + offset_y, 0.0],
+                [1.0, 1.0, 0.0],
+                normal,
+                [0.0, 1.0],
+            ), // Yellow
         ];
         let indices = vec![0, 1, 2, 2, 3, 0];
         Mesh::new_indexed(&vertices, &indices)
@@ -111,35 +171,30 @@ impl Mesh {
         // This means 24 vertices total (4 vertices × 6 faces) instead of 8 shared vertices
         let vertices = vec![
             // Front face (normal pointing +Z)
-            Vertex::new([-0.5, -0.5, 0.5], color, [0.0, 0.0, 1.0], [0.0, 0.0]),  // 0
-            Vertex::new([0.5, -0.5, 0.5], color, [0.0, 0.0, 1.0], [1.0, 0.0]),   // 1
-            Vertex::new([0.5, 0.5, 0.5], color, [0.0, 0.0, 1.0], [1.0, 1.0]),    // 2
-            Vertex::new([-0.5, 0.5, 0.5], color, [0.0, 0.0, 1.0], [0.0, 1.0]),   // 3
-
+            Vertex::new([-0.5, -0.5, 0.5], color, [0.0, 0.0, 1.0], [0.0, 0.0]), // 0
+            Vertex::new([0.5, -0.5, 0.5], color, [0.0, 0.0, 1.0], [1.0, 0.0]),  // 1
+            Vertex::new([0.5, 0.5, 0.5], color, [0.0, 0.0, 1.0], [1.0, 1.0]),   // 2
+            Vertex::new([-0.5, 0.5, 0.5], color, [0.0, 0.0, 1.0], [0.0, 1.0]),  // 3
             // Back face (normal pointing -Z)
             Vertex::new([0.5, -0.5, -0.5], color, [0.0, 0.0, -1.0], [0.0, 0.0]), // 4
             Vertex::new([-0.5, -0.5, -0.5], color, [0.0, 0.0, -1.0], [1.0, 0.0]), // 5
             Vertex::new([-0.5, 0.5, -0.5], color, [0.0, 0.0, -1.0], [1.0, 1.0]), // 6
             Vertex::new([0.5, 0.5, -0.5], color, [0.0, 0.0, -1.0], [0.0, 1.0]),  // 7
-
             // Right face (normal pointing +X)
-            Vertex::new([0.5, -0.5, 0.5], color, [1.0, 0.0, 0.0], [0.0, 0.0]),   // 8
-            Vertex::new([0.5, -0.5, -0.5], color, [1.0, 0.0, 0.0], [1.0, 0.0]),  // 9
-            Vertex::new([0.5, 0.5, -0.5], color, [1.0, 0.0, 0.0], [1.0, 1.0]),   // 10
-            Vertex::new([0.5, 0.5, 0.5], color, [1.0, 0.0, 0.0], [0.0, 1.0]),    // 11
-
+            Vertex::new([0.5, -0.5, 0.5], color, [1.0, 0.0, 0.0], [0.0, 0.0]), // 8
+            Vertex::new([0.5, -0.5, -0.5], color, [1.0, 0.0, 0.0], [1.0, 0.0]), // 9
+            Vertex::new([0.5, 0.5, -0.5], color, [1.0, 0.0, 0.0], [1.0, 1.0]), // 10
+            Vertex::new([0.5, 0.5, 0.5], color, [1.0, 0.0, 0.0], [0.0, 1.0]),  // 11
             // Left face (normal pointing -X)
             Vertex::new([-0.5, -0.5, -0.5], color, [-1.0, 0.0, 0.0], [0.0, 0.0]), // 12
             Vertex::new([-0.5, -0.5, 0.5], color, [-1.0, 0.0, 0.0], [1.0, 0.0]),  // 13
             Vertex::new([-0.5, 0.5, 0.5], color, [-1.0, 0.0, 0.0], [1.0, 1.0]),   // 14
             Vertex::new([-0.5, 0.5, -0.5], color, [-1.0, 0.0, 0.0], [0.0, 1.0]),  // 15
-
             // Top face (normal pointing +Y)
-            Vertex::new([-0.5, 0.5, 0.5], color, [0.0, 1.0, 0.0], [0.0, 0.0]),   // 16
-            Vertex::new([0.5, 0.5, 0.5], color, [0.0, 1.0, 0.0], [1.0, 0.0]),    // 17
-            Vertex::new([0.5, 0.5, -0.5], color, [0.0, 1.0, 0.0], [1.0, 1.0]),   // 18
-            Vertex::new([-0.5, 0.5, -0.5], color, [0.0, 1.0, 0.0], [0.0, 1.0]),  // 19
-
+            Vertex::new([-0.5, 0.5, 0.5], color, [0.0, 1.0, 0.0], [0.0, 0.0]), // 16
+            Vertex::new([0.5, 0.5, 0.5], color, [0.0, 1.0, 0.0], [1.0, 0.0]),  // 17
+            Vertex::new([0.5, 0.5, -0.5], color, [0.0, 1.0, 0.0], [1.0, 1.0]), // 18
+            Vertex::new([-0.5, 0.5, -0.5], color, [0.0, 1.0, 0.0], [0.0, 1.0]), // 19
             // Bottom face (normal pointing -Y)
             Vertex::new([-0.5, -0.5, -0.5], color, [0.0, -1.0, 0.0], [0.0, 0.0]), // 20
             Vertex::new([0.5, -0.5, -0.5], color, [0.0, -1.0, 0.0], [1.0, 0.0]),  // 21
@@ -150,16 +205,11 @@ impl Mesh {
         // 36 indices for 12 triangles (6 faces × 2 triangles)
         let indices = vec![
             // Front face
-            0, 1, 2, 2, 3, 0,
-            // Back face
-            4, 5, 6, 6, 7, 4,
-            // Right face
-            8, 9, 10, 10, 11, 8,
-            // Left face
-            12, 13, 14, 14, 15, 12,
-            // Top face
-            16, 17, 18, 18, 19, 16,
-            // Bottom face
+            0, 1, 2, 2, 3, 0, // Back face
+            4, 5, 6, 6, 7, 4, // Right face
+            8, 9, 10, 10, 11, 8, // Left face
+            12, 13, 14, 14, 15, 12, // Top face
+            16, 17, 18, 18, 19, 16, // Bottom face
             20, 21, 22, 22, 23, 20,
         ];
 
@@ -297,7 +347,12 @@ impl Mesh {
         // Generate indices for top and bottom caps
         // Bottom cap (center vertex)
         let bottom_center_idx = vertices.len() as u32;
-        vertices.push(Vertex::new([0.0, -half_height, 0.0], color, [0.0, -1.0, 0.0], [0.5, 0.5]));
+        vertices.push(Vertex::new(
+            [0.0, -half_height, 0.0],
+            color,
+            [0.0, -1.0, 0.0],
+            [0.5, 0.5],
+        ));
 
         for seg in 0..segments {
             indices.push(bottom_center_idx);
@@ -307,7 +362,12 @@ impl Mesh {
 
         // Top cap (center vertex)
         let top_center_idx = vertices.len() as u32;
-        vertices.push(Vertex::new([0.0, half_height, 0.0], color, [0.0, 1.0, 0.0], [0.5, 0.5]));
+        vertices.push(Vertex::new(
+            [0.0, half_height, 0.0],
+            color,
+            [0.0, 1.0, 0.0],
+            [0.5, 0.5],
+        ));
 
         let top_start = segments + 1;
         for seg in 0..segments {
@@ -327,7 +387,13 @@ impl Mesh {
     /// * `major_segments` - Number of segments around the major circle
     /// * `minor_segments` - Number of segments around the tube
     /// * `color` - RGB color for all vertices
-    pub fn torus(major_radius: f32, minor_radius: f32, major_segments: u32, minor_segments: u32, color: [f32; 3]) -> Self {
+    pub fn torus(
+        major_radius: f32,
+        minor_radius: f32,
+        major_segments: u32,
+        minor_segments: u32,
+        color: [f32; 3],
+    ) -> Self {
         let mut vertices = Vec::new();
         let mut indices = Vec::new();
 
@@ -433,45 +499,45 @@ impl Mesh {
 
             // Position attribute (location = 0)
             gl::VertexAttribPointer(
-                0,                                    // location
-                3,                                    // size (x, y, z)
-                gl::FLOAT,                            // type
-                gl::FALSE,                            // normalized
-                mem::size_of::<Vertex>() as i32,      // stride (size of entire Vertex)
-                ptr::null(),                          // offset (0 for position)
+                0,                               // location
+                3,                               // size (x, y, z)
+                gl::FLOAT,                       // type
+                gl::FALSE,                       // normalized
+                mem::size_of::<Vertex>() as i32, // stride (size of entire Vertex)
+                ptr::null(),                     // offset (0 for position)
             );
             gl::EnableVertexAttribArray(0);
 
             // Color attribute (location = 1)
             gl::VertexAttribPointer(
-                1,                                                 // location
-                3,                                                 // size (r, g, b)
-                gl::FLOAT,                                         // type
-                gl::FALSE,                                         // normalized
-                mem::size_of::<Vertex>() as i32,                   // stride
-                (3 * mem::size_of::<f32>()) as *const std::ffi::c_void,  // offset (3 floats)
+                1,                                                      // location
+                3,                                                      // size (r, g, b)
+                gl::FLOAT,                                              // type
+                gl::FALSE,                                              // normalized
+                mem::size_of::<Vertex>() as i32,                        // stride
+                (3 * mem::size_of::<f32>()) as *const std::ffi::c_void, // offset (3 floats)
             );
             gl::EnableVertexAttribArray(1);
 
             // Normal attribute (location = 2)
             gl::VertexAttribPointer(
-                2,                                                 // location
-                3,                                                 // size (nx, ny, nz)
-                gl::FLOAT,                                         // type
-                gl::FALSE,                                         // normalized
-                mem::size_of::<Vertex>() as i32,                   // stride
-                (6 * mem::size_of::<f32>()) as *const std::ffi::c_void,  // offset (6 floats)
+                2,                                                      // location
+                3,                                                      // size (nx, ny, nz)
+                gl::FLOAT,                                              // type
+                gl::FALSE,                                              // normalized
+                mem::size_of::<Vertex>() as i32,                        // stride
+                (6 * mem::size_of::<f32>()) as *const std::ffi::c_void, // offset (6 floats)
             );
             gl::EnableVertexAttribArray(2);
 
             // UV attribute (location = 3)
             gl::VertexAttribPointer(
-                3,                                                 // location
-                2,                                                 // size (u, v)
-                gl::FLOAT,                                         // type
-                gl::FALSE,                                         // normalized
-                mem::size_of::<Vertex>() as i32,                   // stride
-                (9 * mem::size_of::<f32>()) as *const std::ffi::c_void,  // offset (9 floats: 3 pos + 3 color + 3 normal)
+                3,                                                      // location
+                2,                                                      // size (u, v)
+                gl::FLOAT,                                              // type
+                gl::FALSE,                                              // normalized
+                mem::size_of::<Vertex>() as i32,                        // stride
+                (9 * mem::size_of::<f32>()) as *const std::ffi::c_void, // offset (9 floats: 3 pos + 3 color + 3 normal)
             );
             gl::EnableVertexAttribArray(3);
 

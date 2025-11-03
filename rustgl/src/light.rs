@@ -11,12 +11,12 @@ pub struct Light {
 
 impl Light {
     pub fn new(
-            position: glm::Vec3,
-            color: glm::Vec3,
-            constant: f32,
-            linear: f32,
-            quadratic: f32,
-        ) -> Self {
+        position: glm::Vec3,
+        color: glm::Vec3,
+        constant: f32,
+        linear: f32,
+        quadratic: f32,
+    ) -> Self {
         Light {
             position,
             color,

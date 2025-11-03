@@ -1,22 +1,22 @@
 extern crate gl;
 extern crate glfw;
 
-mod shader;
-mod mesh;
 mod camera;
-mod texture;
-mod material;
 mod light;
+mod material;
+mod mesh;
+mod shader;
+mod texture;
 
-use glfw::{Action, Context, Key};
-use std::time::Instant;
-use shader::Shader;
-use mesh::Mesh;
 use camera::{Camera, CameraMovement};
-use nalgebra_glm as glm;
-use texture::Texture;
-use material::Material;
+use glfw::{Action, Context, Key};
 use light::Light;
+use material::Material;
+use mesh::Mesh;
+use nalgebra_glm as glm;
+use shader::Shader;
+use std::time::Instant;
+use texture::Texture;
 
 fn main() {
     // Initialize GLFW
@@ -70,45 +70,44 @@ fn main() {
     }
 
     // Create all primitive shapes
-    let sphere = Mesh::sphere(1.0, 32, 16, [0.3, 0.7, 1.0]);  // Blue sphere
-    let cube = Mesh::cube([1.0, 0.5, 0.2]);  // Orange cube
-    let cylinder = Mesh::cylinder(0.5, 2.0, 32, [0.2, 1.0, 0.3]);  // Green cylinder
-    let torus = Mesh::torus(1.0, 0.3, 32, 16, [1.0, 0.3, 0.7]);  // Pink torus
-    let plane = Mesh::plane(10.0, 10.0, [0.3, 0.3, 0.3]);  // Gray plane
+    let sphere = Mesh::sphere(1.0, 32, 16, [0.3, 0.7, 1.0]); // Blue sphere
+    let cube = Mesh::cube([1.0, 0.5, 0.2]); // Orange cube
+    let cylinder = Mesh::cylinder(0.5, 2.0, 32, [0.2, 1.0, 0.3]); // Green cylinder
+    let torus = Mesh::torus(1.0, 0.3, 32, 16, [1.0, 0.3, 0.7]); // Pink torus
+    let plane = Mesh::plane(10.0, 10.0, [0.3, 0.3, 0.3]); // Gray plane
 
     let shader = Shader::new("shader/basic.vert", "shader/basic.frag");
     // Load a test texture
-    let texture = Texture::new("resources/textures/livia.png")
-        .expect("Failed to load texture");
+    let texture = Texture::new("resources/textures/livia.png").expect("Failed to load texture");
 
     // Create materials (after creating meshes, before the render loop)
-    let plastic_material = Material::plastic(glm::vec3(0.3, 0.7, 1.0));  // Blue plastic
-    let metal_material = Material::metal(glm::vec3(1.0, 0.5, 0.2));     // Orange metal
-    let matte_material = Material::matte(glm::vec3(0.2, 1.0, 0.3));     // Green matte
-    let rubber_material = Material::rubber(glm::vec3(1.0, 0.3, 0.7));   // Pink rubber
-    let chrome_material = Material::chrome();                            // Chrome
+    let plastic_material = Material::plastic(glm::vec3(0.3, 0.7, 1.0)); // Blue plastic
+    let metal_material = Material::metal(glm::vec3(1.0, 0.5, 0.2)); // Orange metal
+    let matte_material = Material::matte(glm::vec3(0.2, 1.0, 0.3)); // Green matte
+    let rubber_material = Material::rubber(glm::vec3(1.0, 0.3, 0.7)); // Pink rubber
+    let chrome_material = Material::chrome(); // Chrome
 
     // Create lights (after creating materials, before the render loop)
     let lights = vec![
         // White light above and to the right (brighter main light)
         Light::long_range(
             glm::vec3(5.0, 5.0, 5.0),
-            glm::vec3(5.0, 5.0, 5.0),  // White (5x brighter)
+            glm::vec3(5.0, 5.0, 5.0), // White (5x brighter)
         ),
         // Red light on the left
         Light::medium_range(
             glm::vec3(-5.0, 2.0, 0.0),
-            glm::vec3(4.0, 0.6, 0.6),  // Red (2x brighter)
+            glm::vec3(4.0, 0.6, 0.6), // Red (2x brighter)
         ),
         // Blue light on the right
         Light::medium_range(
             glm::vec3(5.0, 2.0, -3.0),
-            glm::vec3(0.6, 1.2, 4.0),  // Blue (2x brighter)
+            glm::vec3(0.6, 1.2, 4.0), // Blue (2x brighter)
         ),
         // Green light in front (subtle)
         Light::short_range(
             glm::vec3(0.0, 1.0, 5.0),
-            glm::vec3(1.0, 3.0, 1.0),  // Green (2x brighter)
+            glm::vec3(1.0, 3.0, 1.0), // Green (2x brighter)
         ),
     ];
 
@@ -151,7 +150,14 @@ fn main() {
             fps_timer = Instant::now();
         }
 
-        process_events(&mut window, &events, &mut camera, &mut wireframe_mode, &mut use_texture, delta_time);
+        process_events(
+            &mut window,
+            &events,
+            &mut camera,
+            &mut wireframe_mode,
+            &mut use_texture,
+            delta_time,
+        );
         update(delta_time, &mut time);
         render(
             &mut window,
@@ -166,11 +172,11 @@ fn main() {
             time,
             wireframe_mode,
             use_texture,
-            &plastic_material,   // NEW
-            &metal_material,     // NEW
-            &matte_material,     // NEW
-            &rubber_material,    // NEW
-            &chrome_material,    // NEW
+            &plastic_material, // NEW
+            &metal_material,   // NEW
+            &matte_material,   // NEW
+            &rubber_material,  // NEW
+            &chrome_material,  // NEW
             &lights,
         );
     }
@@ -242,7 +248,10 @@ fn handle_window_event(
         }
         glfw::WindowEvent::Key(Key::Num1, _, Action::Press, _) => {
             *wireframe_mode = !*wireframe_mode;
-            println!("Wireframe mode: {}", if *wireframe_mode { "ON" } else { "OFF" });
+            println!(
+                "Wireframe mode: {}",
+                if *wireframe_mode { "ON" } else { "OFF" }
+            );
         }
         glfw::WindowEvent::Key(Key::Num2, _, Action::Press, _) => {
             *use_texture = !*use_texture;
@@ -282,11 +291,11 @@ fn render(
     time: f32,
     wireframe_mode: bool,
     use_texture: bool,
-    plastic_mat: &Material,    // NEW
-    metal_mat: &Material,      // NEW
-    matte_mat: &Material,      // NEW
-    rubber_mat: &Material,     // NEW
-    chrome_mat: &Material,     // NEW
+    plastic_mat: &Material, // NEW
+    metal_mat: &Material,   // NEW
+    matte_mat: &Material,   // NEW
+    rubber_mat: &Material,  // NEW
+    chrome_mat: &Material,  // NEW
     lights: &[Light],
 ) {
     unsafe {
@@ -307,19 +316,14 @@ fn render(
         shader.set_vec3("viewPos", &camera.position);
         shader.set_lights(lights);
 
-        texture.bind(0);                        // Bind to texture unit 0
-        shader.set_int("textureSampler", 0);    // Tell shader to use texture unit 0
-        shader.set_bool("useTexture", use_texture);  // Toggle texture based on key press
+        texture.bind(0); // Bind to texture unit 0
+        shader.set_int("textureSampler", 0); // Tell shader to use texture unit 0
+        shader.set_bool("useTexture", use_texture); // Toggle texture based on key press
 
         let view = camera.get_view_matrix();
         shader.set_mat4("view", &view);
 
-        let projection = glm::perspective(
-            1024.0 / 768.0,
-            camera.zoom.to_radians(),
-            0.1,
-            100.0,
-        );
+        let projection = glm::perspective(1024.0 / 768.0, camera.zoom.to_radians(), 0.1, 100.0);
         shader.set_mat4("projection", &projection);
 
         // Draw plane (ground)

@@ -35,10 +35,10 @@ impl Camera {
 
     pub fn default() -> Self {
         Camera::new(
-            glm::vec3(0.0, 0.0, 3.0),  // Position
-            glm::vec3(0.0, 1.0, 0.0),  // World up
-            -90.0,                      // Yaw (looking down -Z)
-            0.0,                        // Pitch (level)
+            glm::vec3(0.0, 0.0, 3.0), // Position
+            glm::vec3(0.0, 1.0, 0.0), // World up
+            -90.0,                    // Yaw (looking down -Z)
+            0.0,                      // Pitch (level)
         )
     }
 
@@ -126,4 +126,3 @@ pub enum CameraMovement {
     Up,
     Down,
 }
-
