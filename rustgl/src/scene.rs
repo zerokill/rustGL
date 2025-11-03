@@ -1,8 +1,8 @@
-use crate::mesh::Mesh;
-use crate::material::Material;
-use crate::transform::Transform;
 use crate::light::Light;
+use crate::material::Material;
+use crate::mesh::Mesh;
 use crate::shader::Shader;
+use crate::transform::Transform;
 use nalgebra_glm as glm;
 
 pub struct SceneObject {
@@ -35,7 +35,8 @@ impl Scene {
     }
 
     pub fn add_object(&mut self, mesh: Mesh, material: Material, transform: Transform) {
-        self.objects.push(SceneObject::new(mesh, material, transform));
+        self.objects
+            .push(SceneObject::new(mesh, material, transform));
     }
 
     pub fn add_light(&mut self, light: Light) {
@@ -52,6 +53,13 @@ impl Scene {
 
     pub fn object_count(&self) -> usize {
         self.objects.len()
+    }
+
+    /// Update the position of a specific light by index
+    pub fn update_light_position(&mut self, index: usize, position: glm::Vec3) {
+        if let Some(light) = self.lights.get_mut(index) {
+            light.position = position;
+        }
     }
 
     pub fn render(&self, shader: &Shader, view: &glm::Mat4, projection: &glm::Mat4) {

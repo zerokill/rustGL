@@ -5,10 +5,10 @@ mod camera;
 mod light;
 mod material;
 mod mesh;
+mod scene;
 mod shader;
 mod texture;
 mod transform;
-mod scene;
 
 use camera::{Camera, CameraMovement};
 use glfw::{Action, Context, Key};
@@ -16,11 +16,11 @@ use light::Light;
 use material::Material;
 use mesh::Mesh;
 use nalgebra_glm as glm;
+use scene::Scene;
 use shader::Shader;
 use std::time::Instant;
 use texture::Texture;
 use transform::Transform;
-use scene::Scene;
 
 fn main() {
     // Initialize GLFW
@@ -119,11 +119,19 @@ fn main() {
         Transform::from_position_scale(glm::vec3(4.0, 0.0, 0.0), glm::vec3(0.8, 0.8, 0.8)),
     );
 
-    // Add lights
-    scene.add_light(Light::long_range(
-        glm::vec3(5.0, 5.0, 5.0),
-        glm::vec3(5.0, 5.0, 5.0),
-    ));
+    // Add orbiting light sphere (bright white, small)
+    scene.add_object(
+        Mesh::sphere(1.0, 16, 8, [1.0, 1.0, 1.0]),
+        Material::new(
+            glm::vec3(1.0, 1.0, 1.0), // High ambient (self-illuminated look)
+            glm::vec3(1.0, 1.0, 1.0), // White diffuse
+            glm::vec3(1.0, 1.0, 1.0), // White specular
+            32.0,                     // Shininess
+        ),
+        Transform::from_position_scale(glm::vec3(6.0, 2.0, 0.0), glm::vec3(0.3, 0.3, 0.3)),
+    );
+
+    // Add static lights
     scene.add_light(Light::medium_range(
         glm::vec3(-5.0, 2.0, 0.0),
         glm::vec3(4.0, 0.6, 0.6),
@@ -135,6 +143,12 @@ fn main() {
     scene.add_light(Light::short_range(
         glm::vec3(0.0, 1.0, 5.0),
         glm::vec3(1.0, 3.0, 1.0),
+    ));
+
+    // Add orbiting light (attached to sphere)
+    scene.add_light(Light::medium_range(
+        glm::vec3(6.0, 2.0, 0.0),
+        glm::vec3(10.0, 10.0, 10.0), // Very bright white light
     ));
 
     let mut camera = Camera::default();
@@ -293,7 +307,7 @@ fn update(delta_time: f32, time: &mut f32, scene: &mut Scene) {
     *time += delta_time;
 
     // Animate objects by updating their transforms
-    // Object indices: 0=plane, 1=sphere, 2=cube, 3=cylinder, 4=torus, 5=chrome sphere
+    // Object indices: 0=plane, 1=sphere, 2=cube, 3=cylinder, 4=torus, 5=chrome sphere, 6=orbiting light sphere
 
     if let Some(sphere) = scene.get_object_mut(1) {
         sphere.transform.rotate(0.0, 0.5 * delta_time, 0.0);
@@ -301,11 +315,14 @@ fn update(delta_time: f32, time: &mut f32, scene: &mut Scene) {
     }
 
     if let Some(cube) = scene.get_object_mut(2) {
-        cube.transform.rotate(0.7 * delta_time, 0.7 * delta_time, 0.0);
+        cube.transform
+            .rotate(0.7 * delta_time, 0.7 * delta_time, 0.0);
     }
 
     if let Some(cylinder) = scene.get_object_mut(3) {
-        cylinder.transform.rotate(0.3 * delta_time, 0.4 * delta_time, 0.0);
+        cylinder
+            .transform
+            .rotate(0.3 * delta_time, 0.4 * delta_time, 0.0);
     }
 
     if let Some(torus) = scene.get_object_mut(4) {
@@ -314,8 +331,31 @@ fn update(delta_time: f32, time: &mut f32, scene: &mut Scene) {
     }
 
     if let Some(chrome_sphere) = scene.get_object_mut(5) {
-        chrome_sphere.transform.rotate(0.8 * delta_time * 0.5, 0.8 * delta_time, 0.8 * delta_time * 0.5);
+        chrome_sphere.transform.rotate(
+            0.8 * delta_time * 0.5,
+            0.8 * delta_time,
+            0.8 * delta_time * 0.5,
+        );
     }
+
+    // Update orbiting light sphere position
+    let orbit_radius = 6.0;
+    let orbit_speed = 1.0; // radians per second
+    let orbit_height = 2.0;
+    let angle = *time * orbit_speed;
+
+    let light_pos = glm::vec3(
+        angle.cos() * orbit_radius,
+        orbit_height,
+        angle.sin() * orbit_radius,
+    );
+
+    if let Some(light_sphere) = scene.get_object_mut(6) {
+        light_sphere.transform.position = light_pos;
+    }
+
+    // Update the orbiting light position to match the sphere
+    scene.update_light_position(3, light_pos);
 }
 
 fn render(
