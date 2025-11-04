@@ -77,7 +77,9 @@ fn main() {
     // Load a test texture
     let texture = Texture::new("resources/textures/livia.png").expect("Failed to load texture");
 
-    // Load skybox texture
+    let mut scene = Scene::new();
+
+    // Set up skybox
     let skybox_texture = Texture::new_cubemap([
         "resources/textures/skybox/right.jpg",
         "resources/textures/skybox/left.jpg",
@@ -86,12 +88,9 @@ fn main() {
         "resources/textures/skybox/front.jpg",
         "resources/textures/skybox/back.jpg",
     ]).expect("Failed to load skybox");
-
-    // Create skybox mesh and shader
     let skybox_mesh = Mesh::skybox_cube();
     let skybox_shader = Shader::new("shader/skybox.vert", "shader/skybox.frag");
-
-    let mut scene = Scene::new();
+    scene.set_skybox(skybox_mesh, skybox_shader, skybox_texture);
 
     scene.add_object(
         Mesh::plane(10.0, 10.0, [0.3, 0.3, 0.3]),
@@ -222,9 +221,6 @@ fn main() {
             &camera,
             wireframe_mode,
             use_texture,
-            &skybox_mesh,
-            &skybox_shader,
-            &skybox_texture,
         );
     }
 }
@@ -384,9 +380,6 @@ fn render(
     camera: &Camera,
     wireframe_mode: bool,
     use_texture: bool,
-    skybox_mesh: &Mesh,           // NEW
-    skybox_shader: &Shader,       // NEW
-    skybox_texture: &Texture,     // NEW
 ) {
     unsafe {
         gl::Enable(gl::DEPTH_TEST);
@@ -404,28 +397,14 @@ fn render(
         let view = camera.get_view_matrix();
         let projection = glm::perspective(1024.0 / 768.0, camera.zoom.to_radians(), 0.1, 100.0);
 
-        gl::DepthFunc(gl::LEQUAL);
-
-        skybox_shader.use_program();
-        skybox_shader.set_mat4("view", &view);
-        skybox_shader.set_mat4("projection", &projection);
-
-        skybox_texture.bind(0);
-        skybox_shader.set_int("skybox", 0);
-
-        skybox_mesh.draw();
-
-        // Restore default depth function
-        gl::DepthFunc(gl::LESS);
-
+        // Set up scene shader uniforms before rendering
         shader.use_program();
-
-        // Set camera-related uniforms
         shader.set_vec3("viewPos", &camera.position);
-        texture.bind(0); // Bind to texture unit 0
-        shader.set_int("textureSampler", 0); // Tell shader to use texture unit 0
-        shader.set_bool("useTexture", use_texture); // Toggle texture based on key press
+        texture.bind(0);
+        shader.set_int("textureSampler", 0);
+        shader.set_bool("useTexture", use_texture);
 
+        // Scene renders skybox internally, then objects
         scene.render(&shader, &view, &projection);
     }
     window.swap_buffers();

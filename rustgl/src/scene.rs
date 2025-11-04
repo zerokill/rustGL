@@ -2,6 +2,7 @@ use crate::light::Light;
 use crate::material::Material;
 use crate::mesh::Mesh;
 use crate::shader::Shader;
+use crate::texture::Texture;
 use crate::transform::Transform;
 use nalgebra_glm as glm;
 
@@ -9,6 +10,12 @@ pub struct SceneObject {
     pub mesh: Mesh,
     pub material: Material,
     pub transform: Transform,
+}
+
+pub struct Skybox {
+    pub mesh: Mesh,
+    pub shader: Shader,
+    pub texture: Texture,
 }
 
 impl SceneObject {
@@ -24,6 +31,7 @@ impl SceneObject {
 pub struct Scene {
     objects: Vec<SceneObject>,
     lights: Vec<Light>,
+    skybox: Option<Skybox>,
 }
 
 impl Scene {
@@ -31,6 +39,7 @@ impl Scene {
         Scene {
             objects: Vec::new(),
             lights: Vec::new(),
+            skybox: None,
         }
     }
 
@@ -62,7 +71,33 @@ impl Scene {
         }
     }
 
+    /// Set the skybox for the scene
+    pub fn set_skybox(&mut self, mesh: Mesh, shader: Shader, texture: Texture) {
+        self.skybox = Some(Skybox {
+            mesh,
+            shader,
+            texture,
+        });
+    }
+
     pub fn render(&self, shader: &Shader, view: &glm::Mat4, projection: &glm::Mat4) {
+        // Render skybox first (if present)
+        if let Some(skybox) = &self.skybox {
+            unsafe {
+                gl::DepthFunc(gl::LEQUAL);
+
+                skybox.shader.use_program();
+                skybox.shader.set_mat4("view", view);
+                skybox.shader.set_mat4("projection", projection);
+                skybox.texture.bind(0);
+                skybox.shader.set_int("skybox", 0);
+                skybox.mesh.draw();
+
+                gl::DepthFunc(gl::LESS);
+            }
+        }
+
+        // Render scene objects
         shader.use_program();
         shader.set_mat4("view", view);
         shader.set_mat4("projection", projection);
