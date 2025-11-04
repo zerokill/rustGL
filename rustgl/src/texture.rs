@@ -2,10 +2,16 @@ use gl::types::*;
 use image::{DynamicImage, GenericImageView};
 use std::path::Path;
 
+pub enum TextureType {
+    Texture2D,
+    Cubemap,
+}
+
 pub struct Texture {
     pub id: GLuint,
     pub width: u32,
     pub height: u32,
+    pub texture_type: TextureType,
 }
 
 impl Texture {
@@ -52,15 +58,69 @@ impl Texture {
             gl::GenerateMipmap(gl::TEXTURE_2D);
         }
 
-        Ok(Texture { id, width, height })
+        Ok(Texture { id, width, height, texture_type: TextureType::Texture2D })
     }
 
-    pub fn bind(&self, texture_unit: u32) {
+    /// Load a cubemap texture from 6 separate image files
+    /// Order: right, left, top, bottom, front, back (+X, -X, +Y, -Y, +Z, -Z)
+    pub fn new_cubemap(faces: [&str; 6]) -> Result<Self, String> {
+        let mut texture_id = 0;
+
         unsafe {
-            gl::ActiveTexture(gl::TEXTURE0 + texture_unit);
-            gl::BindTexture(gl::TEXTURE_2D, self.id);
+            gl::GenTextures(1, &mut texture_id);
+            gl::BindTexture(gl::TEXTURE_CUBE_MAP, texture_id);
+
+            // Load each face
+            for (i, face_path) in faces.iter().enumerate() {
+                let img = image::open(face_path)
+                    .map_err(|e| format!("Failed to load cubemap face {}: {}", face_path, e))?;
+
+                // Don't flip cubemap textures - they're already in the correct orientation
+                let data = img.to_rgb8();
+                let (width, height) = img.dimensions();
+
+                // GL_TEXTURE_CUBE_MAP_POSITIVE_X + i gives us each face
+                gl::TexImage2D(
+                    gl::TEXTURE_CUBE_MAP_POSITIVE_X + i as u32,
+                    0,
+                    gl::RGB as i32,
+                    width as i32,
+                    height as i32,
+                    0,
+                    gl::RGB,
+                    gl::UNSIGNED_BYTE,
+                    data.as_ptr() as *const _,
+                );
+            }
+
+            // Cubemap texture parameters
+            gl::TexParameteri(gl::TEXTURE_CUBE_MAP, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32);
+            gl::TexParameteri(gl::TEXTURE_CUBE_MAP, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
+            gl::TexParameteri(gl::TEXTURE_CUBE_MAP, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as i32);
+            gl::TexParameteri(gl::TEXTURE_CUBE_MAP, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as i32);
+            gl::TexParameteri(gl::TEXTURE_CUBE_MAP, gl::TEXTURE_WRAP_R, gl::CLAMP_TO_EDGE as i32);
+
+            gl::BindTexture(gl::TEXTURE_CUBE_MAP, 0);
+        }
+
+        Ok(Texture {
+            id: texture_id,
+            width: 0,  // Not really relevant for cubemaps
+            height: 0,
+            texture_type: TextureType::Cubemap,
+        })
+    }
+
+    pub fn bind(&self, unit: u32) {
+        unsafe {
+            gl::ActiveTexture(gl::TEXTURE0 + unit);
+            match self.texture_type {
+                TextureType::Texture2D => gl::BindTexture(gl::TEXTURE_2D, self.id),
+                TextureType::Cubemap => gl::BindTexture(gl::TEXTURE_CUBE_MAP, self.id),
+            }
         }
     }
+
 }
 
 impl Drop for Texture {
