@@ -58,7 +58,12 @@ impl Texture {
             gl::GenerateMipmap(gl::TEXTURE_2D);
         }
 
-        Ok(Texture { id, width, height, texture_type: TextureType::Texture2D })
+        Ok(Texture {
+            id,
+            width,
+            height,
+            texture_type: TextureType::Texture2D,
+        })
     }
 
     /// Load a cubemap texture from 6 separate image files
@@ -94,18 +99,38 @@ impl Texture {
             }
 
             // Cubemap texture parameters
-            gl::TexParameteri(gl::TEXTURE_CUBE_MAP, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32);
-            gl::TexParameteri(gl::TEXTURE_CUBE_MAP, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
-            gl::TexParameteri(gl::TEXTURE_CUBE_MAP, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as i32);
-            gl::TexParameteri(gl::TEXTURE_CUBE_MAP, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as i32);
-            gl::TexParameteri(gl::TEXTURE_CUBE_MAP, gl::TEXTURE_WRAP_R, gl::CLAMP_TO_EDGE as i32);
+            gl::TexParameteri(
+                gl::TEXTURE_CUBE_MAP,
+                gl::TEXTURE_MIN_FILTER,
+                gl::LINEAR as i32,
+            );
+            gl::TexParameteri(
+                gl::TEXTURE_CUBE_MAP,
+                gl::TEXTURE_MAG_FILTER,
+                gl::LINEAR as i32,
+            );
+            gl::TexParameteri(
+                gl::TEXTURE_CUBE_MAP,
+                gl::TEXTURE_WRAP_S,
+                gl::CLAMP_TO_EDGE as i32,
+            );
+            gl::TexParameteri(
+                gl::TEXTURE_CUBE_MAP,
+                gl::TEXTURE_WRAP_T,
+                gl::CLAMP_TO_EDGE as i32,
+            );
+            gl::TexParameteri(
+                gl::TEXTURE_CUBE_MAP,
+                gl::TEXTURE_WRAP_R,
+                gl::CLAMP_TO_EDGE as i32,
+            );
 
             gl::BindTexture(gl::TEXTURE_CUBE_MAP, 0);
         }
 
         Ok(Texture {
             id: texture_id,
-            width: 0,  // Not really relevant for cubemaps
+            width: 0, // Not really relevant for cubemaps
             height: 0,
             texture_type: TextureType::Cubemap,
         })
@@ -120,7 +145,6 @@ impl Texture {
             }
         }
     }
-
 }
 
 impl Drop for Texture {

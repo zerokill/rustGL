@@ -87,7 +87,8 @@ fn main() {
         "resources/textures/skybox/bottom.jpg",
         "resources/textures/skybox/front.jpg",
         "resources/textures/skybox/back.jpg",
-    ]).expect("Failed to load skybox");
+    ])
+    .expect("Failed to load skybox");
     let skybox_mesh = Mesh::skybox_cube();
     let skybox_shader = Shader::new("shader/skybox.vert", "shader/skybox.frag");
     scene.set_skybox(skybox_mesh, skybox_shader, skybox_texture);
