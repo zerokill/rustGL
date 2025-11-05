@@ -1,6 +1,7 @@
 extern crate gl;
 extern crate glfw;
 
+mod bloom_renderer;
 mod camera;
 mod framebuffer;
 mod light;
@@ -11,8 +12,8 @@ mod shader;
 mod texture;
 mod transform;
 
+use bloom_renderer::BloomRenderer;
 use camera::{Camera, CameraMovement};
-use framebuffer::Framebuffer;
 use gl::types::*;
 use glfw::{Action, Context, Key};
 use light::Light;
@@ -24,6 +25,28 @@ use shader::Shader;
 use std::time::Instant;
 use texture::Texture;
 use transform::Transform;
+
+struct AppState {
+    wireframe_mode: bool,
+    use_texture: bool,
+    skybox_enabled: bool,
+    bloom_threshold: f32,
+    bloom_strength: f32,
+    bloom_enabled: bool,
+}
+
+impl AppState {
+    fn new() -> Self {
+        AppState {
+            wireframe_mode: false,
+            use_texture: true,
+            skybox_enabled: true,
+            bloom_threshold: 0.8,
+            bloom_strength: 1.0,
+            bloom_enabled: true,
+        }
+    }
+}
 
 fn main() {
     // Initialize GLFW
@@ -82,23 +105,11 @@ fn main() {
 
     // Get actual framebuffer size (important for HiDPI/Retina displays)
     let (fb_width, fb_height) = window.get_framebuffer_size();
-    let mut framebuffer = Framebuffer::new(fb_width as u32, fb_height as u32);
 
-    let mut bright_pass_fbo = Framebuffer::new(fb_width as u32, fb_height as u32);
-    let mut blur_fbo1 = Framebuffer::new(fb_width as u32, fb_height as u32);
-    let mut blur_fbo2 = Framebuffer::new(fb_width as u32, fb_height as u32);
+    // Create bloom renderer (handles all framebuffers and post-processing)
+    let mut bloom_renderer = BloomRenderer::new(fb_width as u32, fb_height as u32);
 
-    let bright_pass_shader = Shader::new("shader/screen.vert", "shader/bright_pass.frag");
-    let blur_shader = Shader::new("shader/screen.vert", "shader/blur.frag");
-    let bloom_composite_shader = Shader::new("shader/screen.vert", "shader/bloom_composite.frag");
-
-    let mut bloom_threshold = 0.8;
-    let mut bloom_strength = 1.0;
-    let blur_iterations = 5;
-    let mut bloom_enabled = true;
-
-    let screen_quad = Mesh::screen_quad();
-    let screen_shader = Shader::new("shader/screen.vert", "shader/screen.frag");
+    let mut state = AppState::new();
 
     let mut scene = Scene::new();
 
@@ -199,11 +210,6 @@ fn main() {
     let mut fps_timer = Instant::now();
     let mut time = 0.0f32;
 
-    // Rendering state toggles
-    let mut wireframe_mode = false;
-    let mut use_texture = true;
-    let mut skybox_enabled = true;
-
     // Window loop - keep the window open
     while !window.should_close() {
         // Frame timing - wait until target frame time has elapsed
@@ -216,7 +222,7 @@ fn main() {
         frame_count += 1;
         if fps_timer.elapsed().as_secs() >= 1 {
             // Update window title with FPS
-            let bloom_status = if bloom_enabled { "ON" } else { "OFF" };
+            let bloom_status = if state.bloom_enabled { "ON" } else { "OFF" };
             let title = format!(
                 "RustGL by mau | FPS: {} | Frame time: {:.2}ms | Pos: ({:.1}, {:.1}, {:.1}) | Bloom: {}",
                 frame_count,
@@ -235,110 +241,31 @@ fn main() {
             &mut window,
             &events,
             &mut camera,
-            &mut wireframe_mode,
-            &mut use_texture,
-            &mut skybox_enabled,
-            &mut bloom_threshold,
-            &mut bloom_strength,
-            &mut bloom_enabled,
+            &mut state,
+            &mut bloom_renderer,
             delta_time,
-            &mut framebuffer,
-            &mut bright_pass_fbo,
-            &mut blur_fbo1,
-            &mut blur_fbo2,
         );
         update(delta_time, &mut time, &mut scene);
 
-        framebuffer.bind();
-        render_scene(
-            &mut window,
-            &scene,
-            &shader,
-            &texture,
-            &camera,
-            wireframe_mode,
-            use_texture,
-            skybox_enabled,
+        // Render scene with bloom post-processing
+        let (fb_width, fb_height) = window.get_framebuffer_size();
+        bloom_renderer.render(
+            || {
+                render_scene(
+                    &mut window,
+                    &scene,
+                    &shader,
+                    &texture,
+                    &camera,
+                    &state,
+                );
+            },
+            state.bloom_threshold,
+            state.bloom_strength,
+            state.bloom_enabled,
+            fb_width,
+            fb_height,
         );
-
-        bright_pass_fbo.bind();
-        unsafe {
-            gl::Disable(gl::DEPTH_TEST);  // No depth test for post-processing
-            gl::ClearColor(0.0, 0.0, 0.0, 1.0);  // Clear to black
-            gl::Clear(gl::COLOR_BUFFER_BIT);
-            bright_pass_shader.use_program();
-            gl::ActiveTexture(gl::TEXTURE0);
-            gl::BindTexture(gl::TEXTURE_2D, framebuffer.texture());
-            bright_pass_shader.set_int("screenTexture", 0);
-            bright_pass_shader.set_float("threshold", bloom_threshold);
-            screen_quad.draw();
-        }
-
-        let mut horizontal = true;
-        let mut first_iteration = true;
-
-        for _ in 0..blur_iterations * 2 {
-            if horizontal {
-                blur_fbo1.bind();
-            } else {
-                blur_fbo2.bind();
-            }
-            unsafe {
-                gl::ClearColor(0.0, 0.0, 0.0, 1.0);  // Clear to black
-                gl::Clear(gl::COLOR_BUFFER_BIT);
-                blur_shader.use_program();
-                gl::ActiveTexture(gl::TEXTURE0);
-
-                let source_texture = if first_iteration {
-                    bright_pass_fbo.texture()
-                } else if horizontal {
-                    blur_fbo2.texture()
-                } else {
-                    blur_fbo1.texture()
-                };
-
-                gl::BindTexture(gl::TEXTURE_2D, source_texture);
-                blur_shader.set_int("image", 0);
-                blur_shader.set_bool("horizontal", horizontal);
-                screen_quad.draw();
-            }
-            horizontal = !horizontal;
-            if first_iteration {
-                first_iteration = false;
-            }
-        }
-
-        Framebuffer::unbind();
-
-        unsafe {
-            // Restore viewport to window size
-            let (fb_width, fb_height) = window.get_framebuffer_size();
-            gl::Viewport(0, 0, fb_width, fb_height);
-
-            gl::Disable(gl::DEPTH_TEST);  // No depth test for screen quad
-            gl::ClearColor(0.0, 0.0, 0.0, 1.0);
-            gl::Clear(gl::COLOR_BUFFER_BIT);
-
-            if bloom_enabled {
-                // Bloom composite
-                bloom_composite_shader.use_program();
-                gl::ActiveTexture(gl::TEXTURE0);
-                gl::BindTexture(gl::TEXTURE_2D, framebuffer.texture());
-                bloom_composite_shader.set_int("scene", 0);
-                gl::ActiveTexture(gl::TEXTURE1);
-                gl::BindTexture(gl::TEXTURE_2D, blur_fbo2.texture());
-                bloom_composite_shader.set_int("bloomBlur", 1);
-                bloom_composite_shader.set_float("bloomStrength", bloom_strength);
-                screen_quad.draw();
-            } else {
-                // Show raw scene without bloom
-                screen_shader.use_program();
-                gl::ActiveTexture(gl::TEXTURE0);
-                gl::BindTexture(gl::TEXTURE_2D, framebuffer.texture());
-                screen_shader.set_int("screenTexture", 0);
-                screen_quad.draw();
-            }
-        }
 
         window.swap_buffers();
     }
@@ -348,17 +275,9 @@ fn process_events(
     window: &mut glfw::Window,
     events: &glfw::GlfwReceiver<(f64, glfw::WindowEvent)>,
     camera: &mut Camera,
-    wireframe_mode: &mut bool,
-    use_texture: &mut bool,
-    skybox_enabled: &mut bool,
-    bloom_threshold: &mut f32,
-    bloom_strength: &mut f32,
-    bloom_enabled: &mut bool,
+    state: &mut AppState,
+    bloom_renderer: &mut BloomRenderer,
     delta_time: f32,
-    framebuffer: &mut Framebuffer,
-    bright_pass_fbo: &mut Framebuffer,
-    blur_fbo1: &mut Framebuffer,
-    blur_fbo2: &mut Framebuffer,
 ) {
     window.glfw.poll_events();
 
@@ -367,16 +286,8 @@ fn process_events(
         handle_window_event(
             window,
             event,
-            wireframe_mode,
-            use_texture,
-            skybox_enabled,
-            bloom_threshold,
-            bloom_strength,
-            bloom_enabled,
-            framebuffer,
-            bright_pass_fbo,
-            blur_fbo1,
-            blur_fbo2,
+            state,
+            bloom_renderer,
         );
     }
 
@@ -422,62 +333,53 @@ fn process_events(
 fn handle_window_event(
     window: &mut glfw::Window,
     event: glfw::WindowEvent,
-    wireframe_mode: &mut bool,
-    use_texture: &mut bool,
-    skybox_enabled: &mut bool,
-    bloom_threshold: &mut f32,
-    bloom_strength: &mut f32,
-    bloom_enabled: &mut bool,
-    framebuffer: &mut Framebuffer,
-    bright_pass_fbo: &mut Framebuffer,
-    blur_fbo1: &mut Framebuffer,
-    blur_fbo2: &mut Framebuffer,
+    state: &mut AppState,
+    bloom_renderer: &mut BloomRenderer,
 ) {
     match event {
         glfw::WindowEvent::Key(Key::Escape, _, Action::Press, _) => {
             window.set_should_close(true);
         }
         glfw::WindowEvent::Key(Key::Num1, _, Action::Press, _) => {
-            *wireframe_mode = !*wireframe_mode;
+            state.wireframe_mode = !state.wireframe_mode;
             println!(
                 "Wireframe mode: {}",
-                if *wireframe_mode { "ON" } else { "OFF" }
+                if state.wireframe_mode { "ON" } else { "OFF" }
             );
         }
         glfw::WindowEvent::Key(Key::Num2, _, Action::Press, _) => {
-            *use_texture = !*use_texture;
-            println!("Texture: {}", if *use_texture { "ON" } else { "OFF" });
+            state.use_texture = !state.use_texture;
+            println!("Texture: {}", if state.use_texture { "ON" } else { "OFF" });
         }
         glfw::WindowEvent::Key(Key::Num3, _, Action::Press, _) => {
-            *bloom_threshold += 0.1;
-            println!("Bloom threshold: {:.1}", *bloom_threshold);
+            state.bloom_threshold += 0.1;
+            println!("Bloom threshold: {:.1}", state.bloom_threshold);
         }
         glfw::WindowEvent::Key(Key::Num4, _, Action::Press, _) => {
-            *bloom_threshold = (*bloom_threshold - 0.1).max(0.0);
-            println!("Bloom threshold: {:.1}", *bloom_threshold);
+            state.bloom_threshold = (state.bloom_threshold - 0.1).max(0.0);
+            println!("Bloom threshold: {:.1}", state.bloom_threshold);
         }
         glfw::WindowEvent::Key(Key::Num5, _, Action::Press, _) => {
-            *bloom_strength += 0.1;
-            println!("Bloom strength: {:.1}", *bloom_strength);
+            state.bloom_strength += 0.1;
+            println!("Bloom strength: {:.1}", state.bloom_strength);
         }
         glfw::WindowEvent::Key(Key::Num6, _, Action::Press, _) => {
-            *bloom_strength = (*bloom_strength - 0.1).max(0.0);
-            println!("Bloom strength: {:.1}", *bloom_strength);
+            state.bloom_strength = (state.bloom_strength - 0.1).max(0.0);
+            println!("Bloom strength: {:.1}", state.bloom_strength);
         }
         glfw::WindowEvent::Key(Key::Num7, _, Action::Press, _) => {
-            *bloom_enabled = !*bloom_enabled;
-            println!("Bloom: {}", if *bloom_enabled { "ON" } else { "OFF" });
+            state.bloom_enabled = !state.bloom_enabled;
+            println!("Bloom: {}", if state.bloom_enabled { "ON" } else { "OFF" });
         }
         glfw::WindowEvent::Key(Key::Num8, _, Action::Press, _) => {
-            *skybox_enabled = !*skybox_enabled;
-            println!("Skybox: {}", if *skybox_enabled { "ON" } else { "OFF" });
+            state.skybox_enabled = !state.skybox_enabled;
+            println!("Skybox: {}", if state.skybox_enabled { "ON" } else { "OFF" });
         }
-        glfw::WindowEvent::FramebufferSize(width, height) => unsafe {
-            gl::Viewport(0, 0, width, height);
-            framebuffer.resize(width as u32, height as u32);
-            bright_pass_fbo.resize(width as u32, height as u32);
-            blur_fbo1.resize(width as u32, height as u32);
-            blur_fbo2.resize(width as u32, height as u32);
+        glfw::WindowEvent::FramebufferSize(width, height) => {
+            bloom_renderer.resize(width as u32, height as u32);
+            unsafe {
+                gl::Viewport(0, 0, width, height);
+            }
         },
         _ => {}
     }
@@ -554,9 +456,7 @@ fn render_scene(
     shader: &Shader,
     texture: &Texture,
     camera: &Camera,
-    wireframe_mode: bool,
-    use_texture: bool,
-    skybox_enabled: bool,
+    state: &AppState,
 ) {
     unsafe {
         gl::Enable(gl::DEPTH_TEST);
@@ -565,7 +465,7 @@ fn render_scene(
         check_gl_error("clear");
 
         // Set polygon mode based on wireframe toggle
-        if wireframe_mode {
+        if state.wireframe_mode {
             gl::PolygonMode(gl::FRONT_AND_BACK, gl::LINE);
         } else {
             gl::PolygonMode(gl::FRONT_AND_BACK, gl::FILL);
@@ -579,10 +479,10 @@ fn render_scene(
         shader.set_vec3("viewPos", &camera.position);
         texture.bind(0);
         shader.set_int("textureSampler", 0);
-        shader.set_bool("useTexture", use_texture);
+        shader.set_bool("useTexture", state.use_texture);
 
         // Scene renders skybox internally, then objects
-        scene.render(&shader, &view, &projection, skybox_enabled);
+        scene.render(&shader, &view, &projection, state.skybox_enabled);
     }
 }
 
