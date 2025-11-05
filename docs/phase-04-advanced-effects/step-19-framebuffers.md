@@ -26,13 +26,13 @@ By default, OpenGL renders to the **default framebuffer** (the window). A **Fram
 
 **Without framebuffers:**
 ```
-Scene ’ Screen (that's it)
+Scene ï¿½ Screen (that's it)
 ```
 
 **With framebuffers:**
 ```
-Scene ’ Texture ’ Post-Process ’ Texture ’ Screen
-        “
+Scene ï¿½ Texture ï¿½ Post-Process ï¿½ Texture ï¿½ Screen
+        ï¿½
     Can be reused for reflections, shadows, etc.
 ```
 
@@ -543,7 +543,7 @@ After this step:
 
 **Core concepts:**
 - Framebuffers: Off-screen render targets
-- Two-pass rendering: Scene ’ Texture ’ Screen
+- Two-pass rendering: Scene ï¿½ Texture ï¿½ Screen
 - Screen quad: Full-screen texture display
 - Post-processing foundation: All effects start here
 
@@ -556,4 +556,4 @@ After this step:
 
 **Time estimate:** 60-75 minutes
 
-Framebuffers are the foundation of modern graphics effects. Once you have this working, a whole world of visual effects opens up! <¨
+Framebuffers are the foundation of modern graphics effects. Once you have this working, a whole world of visual effects opens up! <ï¿½

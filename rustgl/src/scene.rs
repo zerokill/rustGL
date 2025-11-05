@@ -80,9 +80,10 @@ impl Scene {
         });
     }
 
-    pub fn render(&self, shader: &Shader, view: &glm::Mat4, projection: &glm::Mat4) {
-        // Render skybox first (if present)
-        if let Some(skybox) = &self.skybox {
+    pub fn render(&self, shader: &Shader, view: &glm::Mat4, projection: &glm::Mat4, skybox_enabled: bool) {
+        // Render skybox first (if present and enabled)
+        if skybox_enabled {
+            if let Some(skybox) = &self.skybox {
             unsafe {
                 gl::DepthFunc(gl::LEQUAL);
 
@@ -94,6 +95,7 @@ impl Scene {
                 skybox.mesh.draw();
 
                 gl::DepthFunc(gl::LESS);
+            }
             }
         }
 

@@ -544,4 +544,4 @@ In **Step 17: Multiple Lights**, you will:
 
 **Ready to make your objects look like different materials?** Implement the material system and watch your scene come alive with variety!
 
-When you're done, let me know and I'll review your implementation! >€(
+When you're done, let me know and I'll review your implementation! >ï¿½(

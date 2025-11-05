@@ -124,6 +124,18 @@ impl Framebuffer {
             );
         }
     }
+
+    pub fn fbo(&self) -> GLuint {
+        self.fbo
+    }
+
+    pub fn width(&self) -> u32 {
+        self.width
+    }
+
+    pub fn height(&self) -> u32 {
+        self.height
+    }
 }
 
 impl Drop for Framebuffer {

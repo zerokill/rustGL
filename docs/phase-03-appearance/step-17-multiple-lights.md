@@ -47,7 +47,7 @@ In the real world, light **gets dimmer** as you move farther from the source. Th
 
 The formula is:
 ```
-attenuation = 1.0 / (constant + linear * distance + quadratic * distance²)
+attenuation = 1.0 / (constant + linear * distance + quadratic * distanceï¿½)
 ```
 
 - **Constant**: Usually 1.0 (base brightness)
@@ -532,7 +532,7 @@ Before moving on, make sure you understand:
 
 2. **What is light attenuation?**
    - Light getting dimmer as distance increases
-   - Formula: `1.0 / (constant + linear*d + quadratic*d²)`
+   - Formula: `1.0 / (constant + linear*d + quadratic*dï¿½)`
 
 3. **How do multiple lights combine?**
    - Each light calculates its ambient, diffuse, specular contribution
@@ -619,7 +619,7 @@ In this step, you've learned:
 ## Next Steps
 
 In **Step 18: Skybox**, you will:
-- Create a 360° environment background
+- Create a 360ï¿½ environment background
 - Learn about cubemaps (6-sided textures)
 - Make your scene feel more immersive
 - Add reflections in a later step
@@ -628,4 +628,4 @@ In **Step 18: Skybox**, you will:
 
 **Ready to light up your scene with multiple colored lights?** Implement the multiple light system and watch your materials shine under complex lighting!
 
-When you're done, let me know and I'll review your implementation! >€(
+When you're done, let me know and I'll review your implementation! >ï¿½(
