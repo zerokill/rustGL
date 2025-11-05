@@ -698,6 +698,52 @@ impl Mesh {
         Mesh::new(&vertices)
     }
 
+    /// Create a full-screen quad for post-processing
+    /// Positions in NDC (-1 to 1), texture coords (0 to 1)
+    pub fn screen_quad() -> Self {
+        let vertices = vec![
+            // positions (NDC)        // colors (unused)      // normals (unused)    // texCoords
+            Vertex::new(
+                [-1.0, 1.0, 0.0],
+                [1.0, 1.0, 1.0],
+                [0.0, 0.0, 1.0],
+                [0.0, 1.0],
+            ), // Top-left
+            Vertex::new(
+                [-1.0, -1.0, 0.0],
+                [1.0, 1.0, 1.0],
+                [0.0, 0.0, 1.0],
+                [0.0, 0.0],
+            ), // Bottom-left
+            Vertex::new(
+                [1.0, -1.0, 0.0],
+                [1.0, 1.0, 1.0],
+                [0.0, 0.0, 1.0],
+                [1.0, 0.0],
+            ), // Bottom-right
+            Vertex::new(
+                [-1.0, 1.0, 0.0],
+                [1.0, 1.0, 1.0],
+                [0.0, 0.0, 1.0],
+                [0.0, 1.0],
+            ), // Top-left
+            Vertex::new(
+                [1.0, -1.0, 0.0],
+                [1.0, 1.0, 1.0],
+                [0.0, 0.0, 1.0],
+                [1.0, 0.0],
+            ), // Bottom-right
+            Vertex::new(
+                [1.0, 1.0, 0.0],
+                [1.0, 1.0, 1.0],
+                [0.0, 0.0, 1.0],
+                [1.0, 1.0],
+            ), // Top-right
+        ];
+
+        Mesh::new(&vertices)
+    }
+
     pub fn new(vertices: &[Vertex]) -> Self {
         Self::new_internal(vertices, None)
     }

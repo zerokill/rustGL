@@ -2,6 +2,7 @@ extern crate gl;
 extern crate glfw;
 
 mod camera;
+mod framebuffer;
 mod light;
 mod material;
 mod mesh;
@@ -11,6 +12,8 @@ mod texture;
 mod transform;
 
 use camera::{Camera, CameraMovement};
+use framebuffer::Framebuffer;
+use gl::types::*;
 use glfw::{Action, Context, Key};
 use light::Light;
 use material::Material;
@@ -76,6 +79,13 @@ fn main() {
     let shader = Shader::new("shader/basic.vert", "shader/basic.frag");
     // Load a test texture
     let texture = Texture::new("resources/textures/livia.png").expect("Failed to load texture");
+
+    // Get actual framebuffer size (important for HiDPI/Retina displays)
+    let (fb_width, fb_height) = window.get_framebuffer_size();
+    let mut framebuffer = Framebuffer::new(fb_width as u32, fb_height as u32);
+
+    let screen_quad = Mesh::screen_quad();
+    let screen_shader = Shader::new("shader/screen.vert", "shader/screen.frag");
 
     let mut scene = Scene::new();
 
@@ -212,9 +222,12 @@ fn main() {
             &mut wireframe_mode,
             &mut use_texture,
             delta_time,
+            &mut framebuffer,
         );
         update(delta_time, &mut time, &mut scene);
-        render(
+
+        framebuffer.bind();
+        render_scene(
             &mut window,
             &scene,
             &shader,
@@ -222,6 +235,14 @@ fn main() {
             &camera,
             wireframe_mode,
             use_texture,
+        );
+
+        Framebuffer::unbind();
+        render_to_screen(
+            &mut window,
+            &screen_quad,
+            &screen_shader,
+            framebuffer.texture(),
         );
     }
 }
@@ -233,12 +254,13 @@ fn process_events(
     wireframe_mode: &mut bool,
     use_texture: &mut bool,
     delta_time: f32,
+    framebuffer: &mut Framebuffer,
 ) {
     window.glfw.poll_events();
 
     // Handle window events (resize, key presses, etc.)
     for (_, event) in glfw::flush_messages(events) {
-        handle_window_event(window, event, wireframe_mode, use_texture);
+        handle_window_event(window, event, wireframe_mode, use_texture, framebuffer);
     }
 
     // Process camera input EVERY FRAME (not event-based)
@@ -285,6 +307,7 @@ fn handle_window_event(
     event: glfw::WindowEvent,
     wireframe_mode: &mut bool,
     use_texture: &mut bool,
+    framebuffer: &mut Framebuffer,
 ) {
     match event {
         glfw::WindowEvent::Key(Key::Escape, _, Action::Press, _) => {
@@ -303,6 +326,7 @@ fn handle_window_event(
         }
         glfw::WindowEvent::FramebufferSize(width, height) => unsafe {
             gl::Viewport(0, 0, width, height);
+            framebuffer.resize(width as u32, height as u32);
         },
         _ => {}
     }
@@ -373,7 +397,7 @@ fn update(delta_time: f32, time: &mut f32, scene: &mut Scene) {
     scene.update_light_position(3, light_pos);
 }
 
-fn render(
+fn render_scene(
     window: &mut glfw::Window,
     scene: &Scene,
     shader: &Shader,
@@ -407,6 +431,26 @@ fn render(
 
         // Scene renders skybox internally, then objects
         scene.render(&shader, &view, &projection);
+    }
+}
+
+fn render_to_screen(
+    window: &mut glfw::Window,
+    screen_quad: &Mesh,
+    screen_shader: &Shader,
+    texture_id: GLuint,
+) {
+    unsafe {
+        gl::Disable(gl::DEPTH_TEST); // No depth test for screen quad
+        gl::ClearColor(1.0, 1.0, 1.0, 1.0);
+        gl::Clear(gl::COLOR_BUFFER_BIT);
+
+        screen_shader.use_program();
+        gl::ActiveTexture(gl::TEXTURE0);
+        gl::BindTexture(gl::TEXTURE_2D, texture_id);
+        screen_shader.set_int("screenTexture", 0);
+
+        screen_quad.draw();
     }
     window.swap_buffers();
 }
