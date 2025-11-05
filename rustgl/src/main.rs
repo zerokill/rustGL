@@ -11,6 +11,7 @@ mod scene;
 mod shader;
 mod texture;
 mod transform;
+mod godray_renderer;
 
 use bloom_renderer::BloomRenderer;
 use camera::{Camera, CameraMovement};
@@ -25,14 +26,21 @@ use shader::Shader;
 use std::time::Instant;
 use texture::Texture;
 use transform::Transform;
+use godray_renderer::GodRayRenderer;
 
 struct AppState {
     wireframe_mode: bool,
     use_texture: bool,
     skybox_enabled: bool,
+
     bloom_threshold: f32,
     bloom_strength: f32,
     bloom_enabled: bool,
+
+    godray_enabled: bool,
+    godray_strength: f32,
+    godray_exposure: f32,
+    godray_decay: f32,
 }
 
 impl AppState {
@@ -41,9 +49,15 @@ impl AppState {
             wireframe_mode: false,
             use_texture: true,
             skybox_enabled: true,
+
             bloom_threshold: 0.8,
             bloom_strength: 1.0,
             bloom_enabled: true,
+
+            godray_enabled: true,
+            godray_strength: 1.0,
+            godray_exposure: 0.5,
+            godray_decay: 0.97,
         }
     }
 }
@@ -108,6 +122,7 @@ fn main() {
 
     // Create bloom renderer (handles all framebuffers and post-processing)
     let mut bloom_renderer = BloomRenderer::new(fb_width as u32, fb_height as u32);
+    let mut godray_renderer = GodRayRenderer::new(fb_width as u32, fb_height as u32);
 
     let mut state = AppState::new();
 
@@ -243,6 +258,7 @@ fn main() {
             &mut camera,
             &mut state,
             &mut bloom_renderer,
+            &mut godray_renderer,
             delta_time,
         );
         update(delta_time, &mut time, &mut scene);
@@ -267,6 +283,24 @@ fn main() {
             fb_height,
         );
 
+        // In render loop - after bloom
+        if state.godray_enabled {
+            // Get light position (orbiting light sphere - index 3)
+            let light_pos = scene.lights()[3].position;
+            let view = camera.get_view_matrix();
+            let projection = glm::perspective(fb_width as f32 / fb_height as f32, camera.zoom.to_radians(), 0.1, 100.0);
+
+            godray_renderer.apply(
+                bloom_renderer.scene_texture(),  // You'll need to expose this
+                light_pos,
+                &view,
+                &projection,
+                state.godray_strength,
+                fb_width,
+                fb_height,
+            );
+        }
+
         window.swap_buffers();
     }
 }
@@ -277,6 +311,7 @@ fn process_events(
     camera: &mut Camera,
     state: &mut AppState,
     bloom_renderer: &mut BloomRenderer,
+    godray_renderer: &mut GodRayRenderer,
     delta_time: f32,
 ) {
     window.glfw.poll_events();
@@ -288,6 +323,7 @@ fn process_events(
             event,
             state,
             bloom_renderer,
+            godray_renderer,
         );
     }
 
@@ -335,6 +371,7 @@ fn handle_window_event(
     event: glfw::WindowEvent,
     state: &mut AppState,
     bloom_renderer: &mut BloomRenderer,
+    godray_renderer: &mut GodRayRenderer,
 ) {
     match event {
         glfw::WindowEvent::Key(Key::Escape, _, Action::Press, _) => {
@@ -375,8 +412,21 @@ fn handle_window_event(
             state.skybox_enabled = !state.skybox_enabled;
             println!("Skybox: {}", if state.skybox_enabled { "ON" } else { "OFF" });
         }
+        glfw::WindowEvent::Key(Key::Num9, _, Action::Press, _) => {
+            state.godray_enabled = !state.godray_enabled;
+            println!("God rays: {}", if state.godray_enabled { "ON" } else { "OFF" });
+        }
+        glfw::WindowEvent::Key(Key::O, _, Action::Press, _) => {
+            state.godray_exposure += 0.1;
+            println!("God ray exposure: {:.2}", state.godray_exposure);
+        }
+        glfw::WindowEvent::Key(Key::P, _, Action::Press, _) => {
+            state.godray_exposure = (state.godray_exposure - 0.1).max(0.0);
+            println!("God ray exposure: {:.2}", state.godray_exposure);
+        }
         glfw::WindowEvent::FramebufferSize(width, height) => {
             bloom_renderer.resize(width as u32, height as u32);
+            godray_renderer.resize(width as u32, height as u32);
             unsafe {
                 gl::Viewport(0, 0, width, height);
             }

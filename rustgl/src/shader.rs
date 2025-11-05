@@ -29,6 +29,8 @@ impl Shader {
             fragment_path
         ));
 
+        println!("Compiling shader: {} {}", vertex_path, fragment_path);
+
         unsafe {
             // Compile shaders
             let vertex_shader = Self::compile_shader(&vertex_src, gl::VERTEX_SHADER);
@@ -63,6 +65,14 @@ impl Shader {
             let c_name = CString::new(name).unwrap();
             let location = gl::GetUniformLocation(self.id, c_name.as_ptr());
             gl::UniformMatrix4fv(location, 1, gl::FALSE, matrix.as_ptr());
+        }
+    }
+
+    pub fn set_vec2(&self, name: &str, value: &glm::Vec2) {
+        unsafe {
+            let c_name = CString::new(name).unwrap();
+            let location = gl::GetUniformLocation(self.id, c_name.as_ptr());
+            gl::Uniform2f(location, value.x, value.y);
         }
     }
 

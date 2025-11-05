@@ -49,6 +49,11 @@ impl BloomRenderer {
         self.blur_fbo2.resize(width, height);
     }
 
+    /// Get the scene texture for use by other post-processing effects
+    pub fn scene_texture(&self) -> GLuint {
+        self.scene_fbo.texture()
+    }
+
     /// Main entry point - renders the scene with optional bloom
     pub fn render<F>(
         &mut self,
