@@ -66,14 +66,6 @@ impl GodRayRenderer {
     ) {
         let (light_screen_pos, is_on_screen) = self.world_to_screen_checked(light_world_pos, view, projection);
 
-        // Debug output
-        if debug_mode >= 2 {
-            println!("Debug mode {}: Light screen pos: ({:.3}, {:.3}), on_screen: {}",
-                debug_mode, light_screen_pos.x, light_screen_pos.y, is_on_screen);
-            println!("Params: exposure={}, decay={}, density={}, weight={}, samples={}",
-                self.exposure, self.decay, self.density, self.weight, self.num_samples);
-        }
-
         self.generate_occlusion_mask(orb_mesh, orb_transform, view, projection);
 
         // Debug mode 1: Show occlusion buffer
@@ -161,6 +153,7 @@ impl GodRayRenderer {
     fn apply_radial_blur(&mut self, light_screen_pos: glm::Vec2) {
         self.radial_blur_fbo.bind();
         unsafe {
+            gl::Disable(gl::DEPTH_TEST);
             gl::ClearColor(0.0, 0.0, 0.0, 1.0);
             gl::Clear(gl::COLOR_BUFFER_BIT);
 
@@ -181,6 +174,7 @@ impl GodRayRenderer {
     fn composite(&self, scene_texture: GLuint, strength: f32, window_width: i32, window_height: i32) {
         Framebuffer::unbind();
         unsafe {
+            gl::Disable(gl::DEPTH_TEST);
             gl::Viewport(0, 0, window_width, window_height);
             gl::ClearColor(0.0, 0.0, 0.0, 1.0);
             gl::Clear(gl::COLOR_BUFFER_BIT);
