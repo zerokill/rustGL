@@ -21,13 +21,19 @@ use light::Light;
 use material::Material;
 use mesh::Mesh;
 use nalgebra_glm as glm;
-use scene::Scene;
+use scene::{Scene, SceneObjectTag};
 use shader::Shader;
 use std::time::Instant;
 use texture::Texture;
 use transform::Transform;
 use godray_renderer::GodRayRenderer;
 use egui_glfw::egui;
+
+// Constants for magic numbers
+const CAMERA_LOOK_SPEED: f32 = 250.0; // degrees per second
+const TARGET_FPS: f32 = 60.0;
+const TARGET_FRAME_TIME: f32 = 1.0 / TARGET_FPS;
+const GODRAY_RESOLUTION_SCALE: f32 = 0.75; // Render godrays at 75% resolution for performance
 
 struct AppState {
     wireframe_mode: bool,
@@ -148,7 +154,8 @@ fn main() {
 
     // Create bloom renderer (handles all framebuffers and post-processing)
     let mut bloom_renderer = BloomRenderer::new(fb_width as u32, fb_height as u32);
-    let mut godray_renderer = GodRayRenderer::new(fb_width as u32, fb_height as u32);
+    // Create godray renderer with lower resolution for better performance
+    let mut godray_renderer = GodRayRenderer::new(fb_width as u32, fb_height as u32, GODRAY_RESOLUTION_SCALE);
 
     let mut state = AppState::new();
 
@@ -210,6 +217,7 @@ fn main() {
     );
 
     // Add orbiting light sphere (bright white, small)
+    // This will be used as the godray source
     scene.add_object(
         Mesh::sphere(1.0, 16, 8, [1.0, 1.0, 1.0]),
         Material::new(
@@ -220,6 +228,9 @@ fn main() {
         ),
         Transform::from_position_scale(glm::vec3(6.0, 2.0, 0.0), glm::vec3(0.3, 0.3, 0.3)),
     );
+    // Tag the last object (orbiting light sphere) as the godray source
+    let orb_index = scene.object_count() - 1;
+    scene.tag_object(orb_index, SceneObjectTag::GodraySource);
 
     // Add static lights
     scene.add_light(Light::medium_range(
@@ -242,9 +253,6 @@ fn main() {
     ));
 
     let mut camera = Camera::default();
-
-    const TARGET_FPS: f32 = 60.0;
-    const TARGET_FRAME_TIME: f32 = 1.0 / TARGET_FPS;
 
     let mut last_frame_time = glfw.get_time() as f32;
     let mut frame_count = 0;
@@ -294,6 +302,8 @@ fn main() {
 
         // Render scene with bloom post-processing
         let (fb_width, fb_height) = window.get_framebuffer_size();
+        let aspect_ratio = fb_width as f32 / fb_height as f32;
+
         bloom_renderer.render(
             || {
                 render_scene(
@@ -302,6 +312,7 @@ fn main() {
                     &texture,
                     &camera,
                     &state,
+                    aspect_ratio,
                 );
             },
             state.bloom_threshold,
@@ -312,26 +323,29 @@ fn main() {
         );
 
         // In render loop - after bloom
-        let light_pos = scene.lights()[3].position;
-        let view = camera.get_view_matrix();
-        let projection = glm::perspective(fb_width as f32 / fb_height as f32, camera.zoom.to_radians(), 0.1, 100.0);
+        // Find the godray source object by tag instead of hardcoded index
+        if let Some(orb_idx) = scene.find_object_by_tag(SceneObjectTag::GodraySource) {
+            let light_pos = scene.lights()[3].position;
+            let view = camera.get_view_matrix();
+            let projection = glm::perspective(aspect_ratio, camera.zoom.to_radians(), 0.1, 100.0);
 
-        // Update godray parameters from UI state
-        godray_renderer.exposure = state.godray_exposure;
-        godray_renderer.decay = state.godray_decay;
+            // Update godray parameters from UI state
+            godray_renderer.exposure = state.godray_exposure;
+            godray_renderer.decay = state.godray_decay;
 
-        godray_renderer.apply(
-            bloom_renderer.composite_texture(),
-            &scene,
-            6,  // orb_index
-            light_pos,
-            &view,
-            &projection,
-            state.godray_strength,
-            state.godray_debug_mode,
-            fb_width,
-            fb_height,
-        );
+            godray_renderer.apply(
+                bloom_renderer.composite_texture(),
+                &scene,
+                orb_idx,
+                light_pos,
+                &view,
+                &projection,
+                state.godray_strength,
+                state.godray_debug_mode,
+                fb_width,
+                fb_height,
+            );
+        }
 
         // Render UI
         egui_input.input.time = Some(glfw.get_time());
@@ -459,18 +473,17 @@ fn process_events(
         }
 
         // Arrow keys for looking around
-        let look_speed = 250.0; // degrees per second
         if window.get_key(Key::Left) == Action::Press {
-            camera.process_mouse_movement(-look_speed * delta_time, 0.0, true);
+            camera.process_mouse_movement(-CAMERA_LOOK_SPEED * delta_time, 0.0, true);
         }
         if window.get_key(Key::Right) == Action::Press {
-            camera.process_mouse_movement(look_speed * delta_time, 0.0, true);
+            camera.process_mouse_movement(CAMERA_LOOK_SPEED * delta_time, 0.0, true);
         }
         if window.get_key(Key::Up) == Action::Press {
-            camera.process_mouse_movement(0.0, look_speed * delta_time, true);
+            camera.process_mouse_movement(0.0, CAMERA_LOOK_SPEED * delta_time, true);
         }
         if window.get_key(Key::Down) == Action::Press {
-            camera.process_mouse_movement(0.0, -look_speed * delta_time, true);
+            camera.process_mouse_movement(0.0, -CAMERA_LOOK_SPEED * delta_time, true);
         }
     }
 }
@@ -551,6 +564,7 @@ fn render_scene(
     texture: &Texture,
     camera: &Camera,
     state: &AppState,
+    aspect_ratio: f32,
 ) {
     unsafe {
         gl::Enable(gl::DEPTH_TEST);
@@ -565,7 +579,7 @@ fn render_scene(
         }
 
         let view = camera.get_view_matrix();
-        let projection = glm::perspective(1024.0 / 768.0, camera.zoom.to_radians(), 0.1, 100.0);
+        let projection = glm::perspective(aspect_ratio, camera.zoom.to_radians(), 0.1, 100.0);
 
         // Set up scene shader uniforms before rendering
         shader.use_program();

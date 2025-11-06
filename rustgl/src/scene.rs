@@ -6,10 +6,17 @@ use crate::texture::Texture;
 use crate::transform::Transform;
 use nalgebra_glm as glm;
 
+/// Tags for identifying special scene objects
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SceneObjectTag {
+    GodraySource,  // The light source for godray effect
+}
+
 pub struct SceneObject {
     pub mesh: Mesh,
     pub material: Material,
     pub transform: Transform,
+    pub tags: Vec<SceneObjectTag>,
 }
 
 pub struct Skybox {
@@ -24,6 +31,19 @@ impl SceneObject {
             mesh,
             material,
             transform,
+            tags: Vec::new(),
+        }
+    }
+
+    /// Check if this object has a specific tag
+    pub fn has_tag(&self, tag: SceneObjectTag) -> bool {
+        self.tags.contains(&tag)
+    }
+
+    /// Add a tag to this object
+    pub fn add_tag(&mut self, tag: SceneObjectTag) {
+        if !self.has_tag(tag) {
+            self.tags.push(tag);
         }
     }
 }
@@ -70,6 +90,19 @@ impl Scene {
 
     pub fn objects_iter(&self) -> std::slice::Iter<SceneObject> {
         self.objects.iter()
+    }
+
+    /// Find the index of the first object with a specific tag
+    pub fn find_object_by_tag(&self, tag: SceneObjectTag) -> Option<usize> {
+        self.objects.iter()
+            .position(|obj| obj.has_tag(tag))
+    }
+
+    /// Tag a specific object by index
+    pub fn tag_object(&mut self, index: usize, tag: SceneObjectTag) {
+        if let Some(obj) = self.objects.get_mut(index) {
+            obj.add_tag(tag);
+        }
     }
 
     /// Update the position of a specific light by index

@@ -20,15 +20,21 @@ pub struct GodRayRenderer {
     pub density: f32,
     pub weight: f32,
     pub num_samples: i32,
-    #[allow(dead_code)]
-    pub luminance_threshold: f32,
+
+    // Resolution scale for performance optimization (0.5 = half resolution, 1.0 = full resolution)
+    resolution_scale: f32,
 }
 
 impl GodRayRenderer {
-    pub fn new(width: u32, height: u32) -> Self {
+    pub fn new(width: u32, height: u32, resolution_scale: f32) -> Self {
+        // Clamp resolution scale to reasonable values (0.25 to 1.0)
+        let scale = resolution_scale.clamp(0.25, 1.0);
+        let scaled_width = (width as f32 * scale) as u32;
+        let scaled_height = (height as f32 * scale) as u32;
+
         GodRayRenderer {
-            occlusion_fbo: Framebuffer::new(width, height),
-            radial_blur_fbo: Framebuffer::new(width, height),
+            occlusion_fbo: Framebuffer::new(scaled_width, scaled_height),
+            radial_blur_fbo: Framebuffer::new(scaled_width, scaled_height),
 
             occlusion_shader: Shader::new("shader/occlusion.vert", "shader/occlusion.frag"),
             radial_blur_shader: Shader::new("shader/screen.vert", "shader/radial_blur.frag"),
@@ -42,13 +48,16 @@ impl GodRayRenderer {
             density: 0.8,
             weight: 0.3,
             num_samples: 100,
-            luminance_threshold: 0.9,
+            resolution_scale: scale,
         }
     }
 
     pub fn resize(&mut self, width: u32, height: u32) {
-        self.occlusion_fbo.resize(width, height);
-        self.radial_blur_fbo.resize(width, height);
+        let scaled_width = (width as f32 * self.resolution_scale) as u32;
+        let scaled_height = (height as f32 * self.resolution_scale) as u32;
+
+        self.occlusion_fbo.resize(scaled_width, scaled_height);
+        self.radial_blur_fbo.resize(scaled_width, scaled_height);
     }
 
     pub fn apply(

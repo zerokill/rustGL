@@ -1,13 +1,19 @@
 use crate::light::Light;
 use crate::material::Material;
 use nalgebra_glm as glm;
+use std::cell::RefCell;
+use std::collections::HashMap;
 use std::ffi::CString;
 use std::fs;
 use std::ptr;
 
+/// Maximum number of lights supported by the shader
+pub const MAX_LIGHTS: usize = 4;
+
 /// Manages a compiled and linked OpenGL shader program
 pub struct Shader {
     pub id: u32, // OpenGL program ID
+    uniform_cache: RefCell<HashMap<String, i32>>, // Cache for uniform locations
 }
 
 impl Shader {
@@ -49,7 +55,10 @@ impl Shader {
             gl::DeleteShader(vertex_shader);
             gl::DeleteShader(fragment_shader);
 
-            Shader { id: program }
+            Shader {
+                id: program,
+                uniform_cache: RefCell::new(HashMap::new()),
+            }
         }
     }
 
@@ -60,42 +69,59 @@ impl Shader {
         }
     }
 
-    pub fn set_mat4(&self, name: &str, matrix: &glm::Mat4) {
-        unsafe {
+    /// Get a uniform location, using the cache if available
+    fn get_uniform_location(&self, name: &str) -> i32 {
+        // Try to get from cache first
+        {
+            let cache = self.uniform_cache.borrow();
+            if let Some(&location) = cache.get(name) {
+                return location;
+            }
+        }
+
+        // Not in cache, query OpenGL
+        let location = unsafe {
             let c_name = CString::new(name).unwrap();
-            let location = gl::GetUniformLocation(self.id, c_name.as_ptr());
+            gl::GetUniformLocation(self.id, c_name.as_ptr())
+        };
+
+        // Store in cache
+        self.uniform_cache.borrow_mut().insert(name.to_string(), location);
+
+        location
+    }
+
+    pub fn set_mat4(&self, name: &str, matrix: &glm::Mat4) {
+        let location = self.get_uniform_location(name);
+        unsafe {
             gl::UniformMatrix4fv(location, 1, gl::FALSE, matrix.as_ptr());
         }
     }
 
     pub fn set_vec2(&self, name: &str, value: &glm::Vec2) {
+        let location = self.get_uniform_location(name);
         unsafe {
-            let c_name = CString::new(name).unwrap();
-            let location = gl::GetUniformLocation(self.id, c_name.as_ptr());
             gl::Uniform2f(location, value.x, value.y);
         }
     }
 
     pub fn set_vec3(&self, name: &str, value: &glm::Vec3) {
+        let location = self.get_uniform_location(name);
         unsafe {
-            let c_name = CString::new(name).unwrap();
-            let location = gl::GetUniformLocation(self.id, c_name.as_ptr());
             gl::Uniform3f(location, value.x, value.y, value.z);
         }
     }
 
     pub fn set_float(&self, name: &str, value: f32) {
+        let location = self.get_uniform_location(name);
         unsafe {
-            let c_name = CString::new(name).unwrap();
-            let location = gl::GetUniformLocation(self.id, c_name.as_ptr());
             gl::Uniform1f(location, value);
         }
     }
 
     pub fn set_int(&self, name: &str, value: i32) {
+        let location = self.get_uniform_location(name);
         unsafe {
-            let c_name = CString::new(name).unwrap();
-            let location = gl::GetUniformLocation(self.id, c_name.as_ptr());
             gl::Uniform1i(location, value);
         }
     }
@@ -124,8 +150,7 @@ impl Shader {
     pub fn set_lights(&self, lights: &[Light]) {
         self.set_int("numLights", lights.len() as i32);
         for (i, light) in lights.iter().enumerate() {
-            if i >= 4 {
-                // MAX_LIGHTS
+            if i >= MAX_LIGHTS {
                 break;
             }
             self.set_light(i, light);
