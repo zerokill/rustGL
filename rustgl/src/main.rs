@@ -16,7 +16,6 @@ mod performance_monitor;
 
 use bloom_renderer::BloomRenderer;
 use camera::{Camera, CameraMovement};
-use gl::types::*;
 use glfw::{Action, Context, Key};
 use light::Light;
 use material::Material;
@@ -30,6 +29,7 @@ use transform::Transform;
 use godray_renderer::GodRayRenderer;
 use egui_glfw::egui;
 use performance_monitor::PerformanceMonitor;
+use egui::RichText;
 
 // Constants for magic numbers
 const CAMERA_LOOK_SPEED: f32 = 250.0; // degrees per second
@@ -304,6 +304,10 @@ fn main() {
             delta_time,
         );
         update(delta_time, &mut time, &mut scene);
+
+        // Reset performance counters for the new frame
+        // This ensures disabled passes show 0ms instead of stale data
+        perf_monitor.reset_frame();
 
         // Render scene with bloom post-processing
         let (fb_width, fb_height) = window.get_framebuffer_size();
@@ -608,7 +612,7 @@ fn render_ui(
     egui_ctx: &egui::Context,
     state: &mut AppState,
     delta_time: f32,
-    frame_count: u32,
+    _frame_count: u32,
     camera: &Camera,
 ) {
     // Main debug panel
@@ -729,53 +733,48 @@ fn render_performance_ui(
             if counters.is_empty() {
                 ui.label("No performance data available yet...");
             } else {
-                // Create a table-like display
+                // Create a table-like display using Grid
                 use egui::*;
 
-                // Header
-                ui.horizontal(|ui| {
-                    ui.label(RichText::new("Pass Name").strong().size(12.0));
-                    ui.add_space(100.0);
-                    ui.label(RichText::new("Last (ms)").strong().size(12.0));
-                    ui.add_space(20.0);
-                    ui.label(RichText::new("Avg (ms)").strong().size(12.0));
-                    ui.add_space(20.0);
-                    ui.label(RichText::new("% of Total").strong().size(12.0));
-                });
+                Grid::new("performance_grid")
+                    .striped(true)
+                    .spacing([10.0, 4.0])
+                    .show(ui, |ui| {
+                        // Header
+                        ui.label(RichText::new("Pass Name").strong());
+                        ui.label(RichText::new("Last (ms)").strong());
+                        ui.label(RichText::new("Avg (ms)").strong());
+                        ui.label(RichText::new("% of Total").strong());
+                        ui.end_row();
 
-                ui.separator();
+                        // Counter rows
+                        for (name, last_ms, avg_ms) in counters {
+                            let percentage = if total_gpu_time > 0.0 {
+                                (last_ms / total_gpu_time) * 100.0
+                            } else {
+                                0.0
+                            };
 
-                // Counter rows
-                for (name, last_ms, avg_ms) in counters {
-                    let percentage = if total_gpu_time > 0.0 {
-                        (last_ms / total_gpu_time) * 100.0
-                    } else {
-                        0.0
-                    };
+                            // Color code by performance impact
+                            let color = if percentage > 50.0 {
+                                egui::Color32::from_rgb(255, 100, 100) // Red for expensive
+                            } else if percentage > 25.0 {
+                                egui::Color32::from_rgb(255, 200, 100) // Orange for moderate
+                            } else {
+                                egui::Color32::from_rgb(100, 255, 100) // Green for cheap
+                            };
 
-                    ui.horizontal(|ui| {
-                        // Color code by performance impact
-                        let color = if percentage > 50.0 {
-                            Color32::from_rgb(255, 100, 100) // Red for expensive
-                        } else if percentage > 25.0 {
-                            Color32::from_rgb(255, 200, 100) // Orange for moderate
-                        } else {
-                            Color32::from_rgb(100, 255, 100) // Green for cheap
-                        };
-
-                        ui.label(RichText::new(&name).color(color));
-                        ui.add_space(10.0);
-                        ui.label(format!("{:.3}", last_ms));
-                        ui.add_space(10.0);
-                        ui.label(format!("{:.3}", avg_ms));
-                        ui.add_space(10.0);
-                        ui.label(format!("{:.1}%", percentage));
+                            ui.label(RichText::new(&name).color(color));
+                            ui.monospace(format!("{:>6.3}", last_ms));
+                            ui.monospace(format!("{:>6.3}", avg_ms));
+                            ui.monospace(format!("{:>5.1}%", percentage));
+                            ui.end_row();
+                        }
                     });
-                }
 
                 ui.add_space(10.0);
                 ui.separator();
-                ui.label(format!("Total: {:.3} ms", total_gpu_time));
+                ui.monospace(format!("Total: {:.3} ms", total_gpu_time));
             }
 
             ui.add_space(10.0);

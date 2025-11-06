@@ -26,6 +26,7 @@ pub struct GodRayRenderer {
     resolution_scale: f32,
 }
 
+#[allow(dead_code)]
 impl GodRayRenderer {
     pub fn new(width: u32, height: u32, resolution_scale: f32) -> Self {
         // Clamp resolution scale to reasonable values (0.25 to 1.0)

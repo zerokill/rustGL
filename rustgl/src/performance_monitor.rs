@@ -3,23 +3,19 @@ use std::collections::HashMap;
 
 /// GPU timer query for accurate performance measurement
 pub struct GpuTimer {
-    query_start: GLuint,
-    query_end: GLuint,
+    query: GLuint,
     last_time_ns: Option<u64>,
     available: bool,
 }
 
 impl GpuTimer {
     pub fn new() -> Self {
-        let mut query_start = 0;
-        let mut query_end = 0;
+        let mut query = 0;
         unsafe {
-            gl::GenQueries(1, &mut query_start);
-            gl::GenQueries(1, &mut query_end);
+            gl::GenQueries(1, &mut query);
         }
         GpuTimer {
-            query_start,
-            query_end,
+            query,
             last_time_ns: None,
             available: true,
         }
@@ -28,14 +24,14 @@ impl GpuTimer {
     /// Start timing - call before rendering
     pub fn begin(&mut self) {
         unsafe {
-            gl::QueryCounter(self.query_start, gl::TIMESTAMP);
+            gl::BeginQuery(gl::TIME_ELAPSED, self.query);
         }
     }
 
     /// End timing - call after rendering
     pub fn end(&mut self) {
         unsafe {
-            gl::QueryCounter(self.query_end, gl::TIMESTAMP);
+            gl::EndQuery(gl::TIME_ELAPSED);
         }
         self.available = false;
     }
@@ -48,16 +44,14 @@ impl GpuTimer {
         }
 
         unsafe {
-            let mut available_end = 0i32;
-            gl::GetQueryObjectiv(self.query_end, gl::QUERY_RESULT_AVAILABLE, &mut available_end);
+            let mut available = 0i32;
+            gl::GetQueryObjectiv(self.query, gl::QUERY_RESULT_AVAILABLE, &mut available);
 
-            if available_end != 0 {
-                let mut time_start = 0u64;
-                let mut time_end = 0u64;
-                gl::GetQueryObjectui64v(self.query_start, gl::QUERY_RESULT, &mut time_start);
-                gl::GetQueryObjectui64v(self.query_end, gl::QUERY_RESULT, &mut time_end);
+            if available != 0 {
+                let mut time_elapsed = 0u64;
+                gl::GetQueryObjectui64v(self.query, gl::QUERY_RESULT, &mut time_elapsed);
 
-                self.last_time_ns = Some(time_end.saturating_sub(time_start));
+                self.last_time_ns = Some(time_elapsed);
                 self.available = true;
                 true
             } else {
@@ -75,13 +69,18 @@ impl GpuTimer {
     pub fn get_time_ns(&self) -> u64 {
         self.last_time_ns.unwrap_or(0)
     }
+
+    /// Reset the timer's stored value to 0
+    pub fn reset(&mut self) {
+        self.last_time_ns = Some(0);
+        self.available = true;
+    }
 }
 
 impl Drop for GpuTimer {
     fn drop(&mut self) {
         unsafe {
-            gl::DeleteQueries(1, &self.query_start);
-            gl::DeleteQueries(1, &self.query_end);
+            gl::DeleteQueries(1, &self.query);
         }
     }
 }
@@ -147,6 +146,7 @@ pub struct PerformanceMonitor {
     enabled: bool,
 }
 
+#[allow(dead_code)]
 impl PerformanceMonitor {
     pub fn new(history_size: usize) -> Self {
         PerformanceMonitor {
@@ -226,6 +226,16 @@ impl PerformanceMonitor {
     /// Clear all counters
     pub fn clear(&mut self) {
         self.counters.clear();
+    }
+
+    /// Reset all counters for the new frame (sets current values to 0)
+    /// Call this at the start of each frame before any rendering
+    pub fn reset_frame(&mut self) {
+        for counter in self.counters.values_mut() {
+            // Reset the timer to 0 so if begin/end aren't called this frame,
+            // it will report 0ms instead of the old value
+            counter.timer.reset();
+        }
     }
 
     /// Get total render time by summing all counters

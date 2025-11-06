@@ -54,6 +54,7 @@ impl BloomRenderer {
     }
 
     /// Get the scene texture for use by other post-processing effects
+    #[allow(dead_code)]
     pub fn scene_texture(&self) -> GLuint {
         self.scene_fbo.texture()
     }

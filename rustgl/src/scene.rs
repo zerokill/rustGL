@@ -54,6 +54,7 @@ pub struct Scene {
     skybox: Option<Skybox>,
 }
 
+#[allow(dead_code)]
 impl Scene {
     pub fn new() -> Self {
         Scene {
@@ -88,7 +89,7 @@ impl Scene {
         self.objects.len()
     }
 
-    pub fn objects_iter(&self) -> std::slice::Iter<SceneObject> {
+    pub fn objects_iter(&self) -> std::slice::Iter<'_, SceneObject> {
         self.objects.iter()
     }
 
