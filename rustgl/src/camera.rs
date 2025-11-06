@@ -93,6 +93,7 @@ impl Camera {
     }
 
     /// Processes mouse scroll (for zoom, which we'll add later)
+    #[allow(dead_code)]
     pub fn process_mouse_scroll(&mut self, y_offset: f32) {
         self.zoom -= y_offset;
         if self.zoom < 1.0 {

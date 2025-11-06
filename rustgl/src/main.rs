@@ -583,7 +583,7 @@ fn render_ui(
     egui_ctx: &egui::Context,
     state: &mut AppState,
     delta_time: f32,
-    frame_count: u32,
+    _frame_count: u32,
     camera: &Camera,
 ) {
     // Main debug panel

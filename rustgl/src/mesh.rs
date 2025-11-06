@@ -854,7 +854,7 @@ impl Mesh {
     pub fn draw(&self) {
         unsafe {
             gl::BindVertexArray(self.vao);
-            if let Some(_) = self.ebo {
+            if self.ebo.is_some() {
                 gl::DrawElements(
                     gl::TRIANGLES,
                     self.index_count,
@@ -869,21 +869,25 @@ impl Mesh {
     }
 
     /// Returns the VAO handle (useful for debugging)
+    #[allow(dead_code)]
     pub fn vao(&self) -> u32 {
         self.vao
     }
 
     /// Returns the vertex count
+    #[allow(dead_code)]
     pub fn vertex_count(&self) -> i32 {
         self.vertex_count
     }
 
     /// Returns the index count (0 if non-indexed)
+    #[allow(dead_code)]
     pub fn index_count(&self) -> i32 {
         self.index_count
     }
 
     /// Returns true if this mesh uses indexed rendering
+    #[allow(dead_code)]
     pub fn is_indexed(&self) -> bool {
         self.ebo.is_some()
     }

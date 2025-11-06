@@ -201,6 +201,7 @@ impl GodRayRenderer {
         }
     }
 
+    #[allow(dead_code)]
     fn render_passthrough(&self, scene_texture: GLuint, window_width: i32, window_height: i32) {
         Framebuffer::unbind();
         unsafe {
