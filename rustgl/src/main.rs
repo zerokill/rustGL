@@ -41,6 +41,7 @@ struct AppState {
     godray_strength: f32,
     godray_exposure: f32,
     godray_decay: f32,
+    godray_debug_mode: u8,  // 0 = off, 1 = occlusion, 2 = radial blur, 3 = rays only
 }
 
 impl AppState {
@@ -58,6 +59,7 @@ impl AppState {
             godray_strength: 1.0,
             godray_exposure: 0.5,
             godray_decay: 0.97,
+            godray_debug_mode: 0,
         }
     }
 }
@@ -285,17 +287,20 @@ fn main() {
 
         // In render loop - after bloom
         if state.godray_enabled {
-            // Get light position (orbiting light sphere - index 3)
+            let orb = scene.get_object(6).expect("Orb not found");
             let light_pos = scene.lights()[3].position;
             let view = camera.get_view_matrix();
             let projection = glm::perspective(fb_width as f32 / fb_height as f32, camera.zoom.to_radians(), 0.1, 100.0);
 
             godray_renderer.apply(
-                bloom_renderer.scene_texture(),  // You'll need to expose this
+                bloom_renderer.scene_texture(),
+                &orb.mesh,
+                &orb.transform,
                 light_pos,
                 &view,
                 &projection,
                 state.godray_strength,
+                state.godray_debug_mode,
                 fb_width,
                 fb_height,
             );
@@ -423,6 +428,17 @@ fn handle_window_event(
         glfw::WindowEvent::Key(Key::P, _, Action::Press, _) => {
             state.godray_exposure = (state.godray_exposure - 0.1).max(0.0);
             println!("God ray exposure: {:.2}", state.godray_exposure);
+        }
+        glfw::WindowEvent::Key(Key::Num0, _, Action::Press, _) => {
+            state.godray_debug_mode = (state.godray_debug_mode + 1) % 4;
+            let mode_name = match state.godray_debug_mode {
+                0 => "OFF (normal rendering)",
+                1 => "Occlusion buffer (white orb on black)",
+                2 => "Radial blur buffer (blurred rays)",
+                3 => "God rays only (no scene)",
+                _ => "Unknown",
+            };
+            println!("God ray debug mode: {}", mode_name);
         }
         glfw::WindowEvent::FramebufferSize(width, height) => {
             bloom_renderer.resize(width as u32, height as u32);

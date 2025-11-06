@@ -14,6 +14,11 @@ uniform int numSamples;         // Number of samples (typically 100)
 
 void main()
 {
+    // DEBUG: Just output the occlusion texture directly to test if it's bound correctly
+    vec3 occlusionSample = texture(occlusionTexture, TexCoords).rgb;
+    FragColor = vec4(occlusionSample, 1.0);
+    return;
+
     // Create a local copy of TexCoords that we can modify
     vec2 texCoord = TexCoords;
 

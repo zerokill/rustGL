@@ -56,6 +56,10 @@ impl Scene {
         &self.lights
     }
 
+    pub fn get_object(&self, index: usize) -> Option<&SceneObject> {
+        self.objects.get(index)
+    }
+
     pub fn get_object_mut(&mut self, index: usize) -> Option<&mut SceneObject> {
         self.objects.get_mut(index)
     }

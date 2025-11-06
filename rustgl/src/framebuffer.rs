@@ -42,6 +42,7 @@ impl Framebuffer {
                 0,
             );
 
+            // Create depth renderbuffer
             gl::GenRenderbuffers(1, &mut rbo);
             gl::BindRenderbuffer(gl::RENDERBUFFER, rbo);
             gl::RenderbufferStorage(

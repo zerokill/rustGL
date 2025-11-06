@@ -1,6 +1,7 @@
 use crate::framebuffer::Framebuffer;
 use crate::mesh::Mesh;
 use crate::shader::Shader;
+use crate::transform::Transform;
 use gl::types::*;
 use nalgebra_glm as glm;
 
@@ -29,7 +30,7 @@ impl GodRayRenderer {
             occlusion_fbo: Framebuffer::new(width, height),
             radial_blur_fbo: Framebuffer::new(width, height),
 
-            occlusion_shader: Shader::new("shader/screen.vert", "shader/occlusion.frag"),
+            occlusion_shader: Shader::new("shader/occlusion.vert", "shader/occlusion.frag"),
             radial_blur_shader: Shader::new("shader/screen.vert", "shader/radial_blur.frag"),
             composite_shader: Shader::new("shader/screen.vert", "shader/godray_composite.frag"),
             screen_shader: Shader::new("shader/screen.vert", "shader/screen.frag"),
@@ -53,32 +54,61 @@ impl GodRayRenderer {
     pub fn apply(
         &mut self,
         scene_texture: GLuint,
+        orb_mesh: &Mesh,
+        orb_transform: &Transform,
         light_world_pos: glm::Vec3,
         view: &glm::Mat4,
         projection: &glm::Mat4,
         strength: f32,
+        debug_mode: u8,  // 0 = off, 1 = occlusion, 2 = radial blur, 3 = rays only
         window_width: i32,
         window_height: i32,
     ) {
-        // Convert light position to screen space and check if visible
-        let (light_screen_pos, is_visible) = self.world_to_screen(light_world_pos, view, projection);
+        let (light_screen_pos, is_on_screen) = self.world_to_screen_checked(light_world_pos, view, projection);
 
-        // Only apply god rays if light is in front of camera and on screen
-        if !is_visible {
-            // Just render the scene without god rays
-            self.render_passthrough(scene_texture, window_width, window_height);
+        // Debug output
+        if debug_mode >= 2 {
+            println!("Debug mode {}: Light screen pos: ({:.3}, {:.3}), on_screen: {}",
+                debug_mode, light_screen_pos.x, light_screen_pos.y, is_on_screen);
+            println!("Params: exposure={}, decay={}, density={}, weight={}, samples={}",
+                self.exposure, self.decay, self.density, self.weight, self.num_samples);
+        }
+
+        self.generate_occlusion_mask(orb_mesh, orb_transform, view, projection);
+
+        // Debug mode 1: Show occlusion buffer
+        if debug_mode == 1 {
+            self.render_debug_buffer(self.occlusion_fbo.texture(), window_width, window_height);
             return;
         }
 
-        self.generate_occlusion_mask(scene_texture);
-        self.apply_radial_blur(light_screen_pos);
+        // Only apply radial blur if light is reasonably close to screen
+        // (we allow some margin for off-screen rays)
+        if is_on_screen {
+            self.apply_radial_blur(light_screen_pos);
+        } else {
+            // Clear the radial blur buffer if light is too far off-screen
+            self.radial_blur_fbo.bind();
+            unsafe {
+                gl::ClearColor(0.0, 0.0, 0.0, 1.0);
+                gl::Clear(gl::COLOR_BUFFER_BIT);
+            }
+        }
+
+        // Debug mode 2 & 3: Show radial blur buffer (god rays only)
+        if debug_mode == 2 || debug_mode == 3 {
+            self.render_debug_buffer(self.radial_blur_fbo.texture(), window_width, window_height);
+            return;
+        }
+
+        // Normal mode (0): Composite with scene
         self.composite(scene_texture, strength, window_width, window_height);
     }
 
-    pub fn world_to_screen(&self, world_pos: glm::Vec3, view: &glm::Mat4, projection: &glm::Mat4) -> (glm::Vec2, bool) {
+    fn world_to_screen_checked(&self, world_pos: glm::Vec3, view: &glm::Mat4, projection: &glm::Mat4) -> (glm::Vec2, bool) {
         let clip_space = projection * view * glm::vec4(world_pos.x, world_pos.y, world_pos.z, 1.0);
 
-        // Check if light is behind the camera (negative w or negative z after perspective divide)
+        // Check if behind camera
         if clip_space.w <= 0.0 {
             return (glm::vec2(0.5, 0.5), false);
         }
@@ -89,32 +119,43 @@ impl GodRayRenderer {
             clip_space.z / clip_space.w,
         );
 
-        // Check if light is in front of camera (NDC z should be between -1 and 1)
-        // and roughly on screen (we allow some margin for off-screen rays)
-        let is_visible = ndc.z >= -1.0 && ndc.z <= 1.0;
+        // Check if light is reasonably close to screen
+        // We allow some margin (up to 2x off-screen) for edge rays
+        let margin = 2.0;
+        let is_on_screen = ndc.x >= -margin && ndc.x <= margin &&
+                          ndc.y >= -margin && ndc.y <= margin &&
+                          ndc.z >= -1.0 && ndc.z <= 1.0;
 
+        // Clamp to reasonable range for radial blur
         let screen_pos = glm::vec2(
-            (ndc.x + 1.0) * 0.5,
-            (ndc.y + 1.0) * 0.5,
+            ((ndc.x + 1.0) * 0.5).clamp(-1.0, 2.0),  // Allow some off-screen
+            ((ndc.y + 1.0) * 0.5).clamp(-1.0, 2.0),
         );
 
-        (screen_pos, is_visible)
+        (screen_pos, is_on_screen)
     }
 
-    fn generate_occlusion_mask(&mut self, scene_texture: GLuint) {
+    fn generate_occlusion_mask(&mut self,
+        orb_mesh: &Mesh,
+        orb_transform: &Transform,
+        view: &glm::Mat4,
+        projection: &glm::Mat4,
+    ) {
         self.occlusion_fbo.bind();
         unsafe {
-            gl::Disable(gl::DEPTH_TEST);
+            gl::Enable(gl::DEPTH_TEST);
             gl::ClearColor(0.0, 0.0, 0.0, 1.0);
-            gl::Clear(gl::COLOR_BUFFER_BIT);
+            gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
 
             self.occlusion_shader.use_program();
-            gl::ActiveTexture(gl::TEXTURE0);
-            gl::BindTexture(gl::TEXTURE_2D, scene_texture);
-            self.occlusion_shader.set_int("sceneTexture", 0);
-            self.occlusion_shader.set_float("luminanceThreshold", self.luminance_threshold);
-            self.screen_quad.draw();
+            self.occlusion_shader.set_mat4("model", &orb_transform.to_matrix());
+            self.occlusion_shader.set_mat4("view", view);
+            self.occlusion_shader.set_mat4("projection", projection);
+            orb_mesh.draw();
         }
+
+        // Unbind the framebuffer so we can read from its texture
+        Framebuffer::unbind();
     }
 
     fn apply_radial_blur(&mut self, light_screen_pos: glm::Vec2) {
@@ -167,6 +208,22 @@ impl GodRayRenderer {
             self.screen_shader.use_program();
             gl::ActiveTexture(gl::TEXTURE0);
             gl::BindTexture(gl::TEXTURE_2D, scene_texture);
+            self.screen_shader.set_int("screenTexture", 0);
+            self.screen_quad.draw();
+        }
+    }
+
+    fn render_debug_buffer(&self, texture: GLuint, window_width: i32, window_height: i32) {
+        Framebuffer::unbind();
+        unsafe {
+            gl::Viewport(0, 0, window_width, window_height);
+            gl::Disable(gl::DEPTH_TEST);
+            gl::ClearColor(0.0, 0.0, 0.0, 1.0);
+            gl::Clear(gl::COLOR_BUFFER_BIT);
+
+            self.screen_shader.use_program();
+            gl::ActiveTexture(gl::TEXTURE0);
+            gl::BindTexture(gl::TEXTURE_2D, texture);
             self.screen_shader.set_int("screenTexture", 0);
             self.screen_quad.draw();
         }
