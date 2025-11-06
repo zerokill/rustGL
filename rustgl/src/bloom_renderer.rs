@@ -1,6 +1,7 @@
 use crate::framebuffer::Framebuffer;
 use crate::mesh::Mesh;
 use crate::shader::Shader;
+use crate::performance_monitor::PerformanceMonitor;
 use gl::types::*;
 
 pub struct BloomRenderer {
@@ -70,25 +71,29 @@ impl BloomRenderer {
         enabled: bool,
         window_width: i32,
         window_height: i32,
+        perf_monitor: &mut PerformanceMonitor,
     ) where
         F: FnOnce(),
     {
         // Pass 1: Render scene to framebuffer
+        perf_monitor.begin("1. Scene Render");
         self.scene_fbo.bind();
         render_scene();
+        perf_monitor.end("1. Scene Render");
 
         if enabled {
             // Passes 2-5: Apply bloom effect
-            self.apply_bloom(threshold, strength, window_width, window_height);
+            self.apply_bloom(threshold, strength, window_width, window_height, perf_monitor);
         } else {
             // Just render scene without bloom
-            self.render_passthrough(window_width, window_height);
+            self.render_passthrough(window_width, window_height, perf_monitor);
         }
     }
 
     /// Apply the full bloom pipeline (bright pass + blur + composite)
-    fn apply_bloom(&mut self, threshold: f32, strength: f32, window_width: i32, window_height: i32) {
+    fn apply_bloom(&mut self, threshold: f32, strength: f32, window_width: i32, window_height: i32, perf_monitor: &mut PerformanceMonitor) {
         // Pass 2: Extract bright areas
+        perf_monitor.begin("2. Bloom Bright Pass");
         self.bright_pass_fbo.bind();
         unsafe {
             gl::Disable(gl::DEPTH_TEST);
@@ -102,8 +107,10 @@ impl BloomRenderer {
             self.bright_pass_shader.set_float("threshold", threshold);
             self.screen_quad.draw();
         }
+        perf_monitor.end("2. Bloom Bright Pass");
 
         // Passes 3 & 4: Ping-pong blur
+        perf_monitor.begin("3. Bloom Blur Passes");
         let mut horizontal = true;
         let mut first_iteration = true;
 
@@ -141,8 +148,10 @@ impl BloomRenderer {
             }
         }
         Framebuffer::unbind();
+        perf_monitor.end("3. Bloom Blur Passes");
 
         // Pass 5: Composite bloom with scene
+        perf_monitor.begin("4. Bloom Composite");
         self.composite_fbo.bind();
         unsafe {
             gl::Viewport(0, 0, window_width, window_height);
@@ -161,10 +170,12 @@ impl BloomRenderer {
             self.screen_quad.draw();
         }
         Framebuffer::unbind();
+        perf_monitor.end("4. Bloom Composite");
     }
 
     /// Render scene without bloom
-    fn render_passthrough(&self, window_width: i32, window_height: i32) {
+    fn render_passthrough(&self, window_width: i32, window_height: i32, perf_monitor: &mut PerformanceMonitor) {
+        perf_monitor.begin("2. Passthrough (No Bloom)");
         self.composite_fbo.bind();
         unsafe {
             gl::Viewport(0, 0, window_width, window_height);
@@ -179,5 +190,6 @@ impl BloomRenderer {
             self.screen_quad.draw();
         }
         Framebuffer::unbind();
+        perf_monitor.end("2. Passthrough (No Bloom)");
     }
 }
