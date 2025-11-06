@@ -1,6 +1,7 @@
 use crate::framebuffer::Framebuffer;
 use crate::mesh::Mesh;
 use crate::shader::Shader;
+use crate::performance_monitor::PerformanceMonitor;
 use gl::types::*;
 use nalgebra_glm as glm;
 
@@ -25,6 +26,7 @@ pub struct GodRayRenderer {
     resolution_scale: f32,
 }
 
+#[allow(dead_code)]
 impl GodRayRenderer {
     pub fn new(width: u32, height: u32, resolution_scale: f32) -> Self {
         // Clamp resolution scale to reasonable values (0.25 to 1.0)
@@ -72,10 +74,11 @@ impl GodRayRenderer {
         debug_mode: u8,  // 0 = off, 1 = occlusion, 2 = radial blur
         window_width: i32,
         window_height: i32,
+        perf_monitor: &mut PerformanceMonitor,
     ) {
         let (light_screen_pos, is_on_screen) = self.world_to_screen_checked(light_world_pos, view, projection);
 
-        self.generate_occlusion_mask(scene, orb_index, view, projection);
+        self.generate_occlusion_mask(scene, orb_index, view, projection, perf_monitor);
 
         // Debug mode 1: Show occlusion buffer
         if debug_mode == 1 {
@@ -86,7 +89,7 @@ impl GodRayRenderer {
         // Only apply radial blur if light is reasonably close to screen
         // (we allow some margin for off-screen rays)
         if is_on_screen {
-            self.apply_radial_blur(light_screen_pos);
+            self.apply_radial_blur(light_screen_pos, perf_monitor);
         } else {
             // Clear the radial blur buffer if light is too far off-screen
             self.radial_blur_fbo.bind();
@@ -103,7 +106,7 @@ impl GodRayRenderer {
         }
 
         // Normal mode (0): Composite with scene
-        self.composite(scene_texture, strength, window_width, window_height);
+        self.composite(scene_texture, strength, window_width, window_height, perf_monitor);
     }
 
     fn world_to_screen_checked(&self, world_pos: glm::Vec3, view: &glm::Mat4, projection: &glm::Mat4) -> (glm::Vec2, bool) {
@@ -142,7 +145,9 @@ impl GodRayRenderer {
         orb_index: usize,
         view: &glm::Mat4,
         projection: &glm::Mat4,
+        perf_monitor: &mut PerformanceMonitor,
     ) {
+        perf_monitor.begin("5. Godray Occlusion");
         self.occlusion_fbo.bind();
         unsafe {
             gl::Enable(gl::DEPTH_TEST);
@@ -167,9 +172,11 @@ impl GodRayRenderer {
 
         // Unbind the framebuffer so we can read from its texture
         Framebuffer::unbind();
+        perf_monitor.end("5. Godray Occlusion");
     }
 
-    fn apply_radial_blur(&mut self, light_screen_pos: glm::Vec2) {
+    fn apply_radial_blur(&mut self, light_screen_pos: glm::Vec2, perf_monitor: &mut PerformanceMonitor) {
+        perf_monitor.begin("6. Godray Radial Blur");
         self.radial_blur_fbo.bind();
         unsafe {
             gl::Disable(gl::DEPTH_TEST);
@@ -188,9 +195,11 @@ impl GodRayRenderer {
             self.radial_blur_shader.set_int("numSamples", self.num_samples);
             self.screen_quad.draw();
         }
+        perf_monitor.end("6. Godray Radial Blur");
     }
 
-    fn composite(&self, scene_texture: GLuint, strength: f32, window_width: i32, window_height: i32) {
+    fn composite(&self, scene_texture: GLuint, strength: f32, window_width: i32, window_height: i32, perf_monitor: &mut PerformanceMonitor) {
+        perf_monitor.begin("7. Godray Composite");
         Framebuffer::unbind();
         unsafe {
             gl::Disable(gl::DEPTH_TEST);
@@ -208,6 +217,7 @@ impl GodRayRenderer {
             self.composite_shader.set_float("godRayStrength", strength);
             self.screen_quad.draw();
         }
+        perf_monitor.end("7. Godray Composite");
     }
 
     fn render_passthrough(&self, scene_texture: GLuint, window_width: i32, window_height: i32) {

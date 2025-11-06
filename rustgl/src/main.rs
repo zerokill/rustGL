@@ -12,10 +12,10 @@ mod shader;
 mod texture;
 mod transform;
 mod godray_renderer;
+mod performance_monitor;
 
 use bloom_renderer::BloomRenderer;
 use camera::{Camera, CameraMovement};
-use gl::types::*;
 use glfw::{Action, Context, Key};
 use light::Light;
 use material::Material;
@@ -28,6 +28,8 @@ use texture::Texture;
 use transform::Transform;
 use godray_renderer::GodRayRenderer;
 use egui_glfw::egui;
+use performance_monitor::PerformanceMonitor;
+use egui::RichText;
 
 // Constants for magic numbers
 const CAMERA_LOOK_SPEED: f32 = 250.0; // degrees per second
@@ -151,6 +153,9 @@ fn main() {
     let shader = Shader::new("shader/basic.vert", "shader/basic.frag");
     // Load a test texture
     let texture = Texture::new("resources/textures/livia.png").expect("Failed to load texture");
+
+    // Create performance monitor (60 frame history for smooth averaging)
+    let mut perf_monitor = PerformanceMonitor::new(60);
 
     // Create bloom renderer (handles all framebuffers and post-processing)
     let mut bloom_renderer = BloomRenderer::new(fb_width as u32, fb_height as u32);
@@ -300,6 +305,10 @@ fn main() {
         );
         update(delta_time, &mut time, &mut scene);
 
+        // Reset performance counters for the new frame
+        // This ensures disabled passes show 0ms instead of stale data
+        perf_monitor.reset_frame();
+
         // Render scene with bloom post-processing
         let (fb_width, fb_height) = window.get_framebuffer_size();
         let aspect_ratio = fb_width as f32 / fb_height as f32;
@@ -320,6 +329,7 @@ fn main() {
             state.bloom_enabled,
             fb_width,
             fb_height,
+            &mut perf_monitor,
         );
 
         // In render loop - after bloom
@@ -344,6 +354,7 @@ fn main() {
                 state.godray_debug_mode,
                 fb_width,
                 fb_height,
+                &mut perf_monitor,
             );
         }
 
@@ -358,8 +369,12 @@ fn main() {
             egui::vec2(width as f32, height as f32),
         ));
 
+        // Update performance monitor (collect GPU timer results)
+        perf_monitor.update();
+
         egui_ctx.begin_frame(egui_input.input.take());
         render_ui(&egui_ctx, &mut state, delta_time, frame_count, &camera);
+        render_performance_ui(&egui_ctx, &perf_monitor, delta_time);
 
         let egui::FullOutput {
             platform_output,
@@ -597,7 +612,7 @@ fn render_ui(
     egui_ctx: &egui::Context,
     state: &mut AppState,
     delta_time: f32,
-    frame_count: u32,
+    _frame_count: u32,
     camera: &Camera,
 ) {
     // Main debug panel
@@ -682,5 +697,88 @@ fn render_ui(
             ui.label("QE - Move up/down");
             ui.label("Arrows - Look around");
             ui.label("ESC - Quit");
+        });
+}
+
+fn render_performance_ui(
+    egui_ctx: &egui::Context,
+    perf_monitor: &PerformanceMonitor,
+    cpu_delta_time: f32,
+) {
+    // Performance monitoring window
+    egui::Window::new("Performance Counters")
+        .default_width(400.0)
+        .default_pos([320.0, 20.0])
+        .show(egui_ctx, |ui| {
+            ui.heading("Frame Statistics");
+            ui.separator();
+
+            // CPU frame time
+            ui.label(format!("CPU Frame Time: {:.2} ms", cpu_delta_time * 1000.0));
+            ui.label(format!("CPU FPS: {:.0}", 1.0 / cpu_delta_time));
+
+            ui.add_space(10.0);
+
+            // GPU total time
+            let total_gpu_time = perf_monitor.get_total_time_ms();
+            ui.label(format!("Total GPU Time: {:.3} ms", total_gpu_time));
+
+            ui.add_space(10.0);
+            ui.heading("GPU Render Passes");
+            ui.separator();
+
+            // Get all counters sorted by name
+            let counters = perf_monitor.get_all_counters();
+
+            if counters.is_empty() {
+                ui.label("No performance data available yet...");
+            } else {
+                // Create a table-like display using Grid
+                use egui::*;
+
+                Grid::new("performance_grid")
+                    .striped(true)
+                    .spacing([10.0, 4.0])
+                    .show(ui, |ui| {
+                        // Header
+                        ui.label(RichText::new("Pass Name").strong());
+                        ui.label(RichText::new("Last (ms)").strong());
+                        ui.label(RichText::new("Avg (ms)").strong());
+                        ui.label(RichText::new("% of Total").strong());
+                        ui.end_row();
+
+                        // Counter rows
+                        for (name, last_ms, avg_ms) in counters {
+                            let percentage = if total_gpu_time > 0.0 {
+                                (last_ms / total_gpu_time) * 100.0
+                            } else {
+                                0.0
+                            };
+
+                            // Color code by performance impact
+                            let color = if percentage > 50.0 {
+                                egui::Color32::from_rgb(255, 100, 100) // Red for expensive
+                            } else if percentage > 25.0 {
+                                egui::Color32::from_rgb(255, 200, 100) // Orange for moderate
+                            } else {
+                                egui::Color32::from_rgb(100, 255, 100) // Green for cheap
+                            };
+
+                            ui.label(RichText::new(&name).color(color));
+                            ui.monospace(format!("{:>6.3}", last_ms));
+                            ui.monospace(format!("{:>6.3}", avg_ms));
+                            ui.monospace(format!("{:>5.1}%", percentage));
+                            ui.end_row();
+                        }
+                    });
+
+                ui.add_space(10.0);
+                ui.separator();
+                ui.monospace(format!("Total: {:.3} ms", total_gpu_time));
+            }
+
+            ui.add_space(10.0);
+            ui.label("Monitor: ON");
+            ui.label(RichText::new("Tracking all framebuffer render passes").size(10.0).italics());
         });
 }

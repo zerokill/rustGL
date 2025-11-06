@@ -32,6 +32,7 @@ pub struct Mesh {
     index_count: i32,
 }
 
+#[allow(dead_code)]
 impl Mesh {
     /// Creates a colored triangle mesh
     pub fn triangle(color: [f32; 3]) -> Self {

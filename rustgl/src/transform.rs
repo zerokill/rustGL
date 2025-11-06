@@ -7,6 +7,7 @@ pub struct Transform {
     pub scale: glm::Vec3,
 }
 
+#[allow(dead_code)]
 impl Transform {
     pub fn new() -> Self {
         Transform {

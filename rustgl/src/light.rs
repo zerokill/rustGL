@@ -10,6 +10,7 @@ pub struct Light {
 }
 
 impl Light {
+    #[allow(dead_code)]
     pub fn new(
         position: glm::Vec3,
         color: glm::Vec3,
@@ -46,6 +47,7 @@ impl Light {
         }
     }
 
+    #[allow(dead_code)]
     pub fn long_range(position: glm::Vec3, color: glm::Vec3) -> Self {
         Light {
             position,
@@ -56,6 +58,7 @@ impl Light {
         }
     }
 
+    #[allow(dead_code)]
     pub fn very_long_range(position: glm::Vec3, color: glm::Vec3) -> Self {
         Light {
             position,
