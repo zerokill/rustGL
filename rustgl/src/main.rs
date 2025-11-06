@@ -287,15 +287,14 @@ fn main() {
 
         // In render loop - after bloom
         if state.godray_enabled {
-            let orb = scene.get_object(6).expect("Orb not found");
             let light_pos = scene.lights()[3].position;
             let view = camera.get_view_matrix();
             let projection = glm::perspective(fb_width as f32 / fb_height as f32, camera.zoom.to_radians(), 0.1, 100.0);
 
             godray_renderer.apply(
                 bloom_renderer.scene_texture(),
-                &orb.mesh,
-                &orb.transform,
+                &scene,
+                6,  // orb_index
                 light_pos,
                 &view,
                 &projection,
@@ -498,7 +497,7 @@ fn update(delta_time: f32, time: &mut f32, scene: &mut Scene) {
 
     // Update orbiting light sphere position
     let orbit_radius = 6.0;
-    let orbit_speed = 0.7; // radians per second
+    let orbit_speed = 0.5; // radians per second
     let orbit_height = 2.0;
     let angle = *time * orbit_speed;
 

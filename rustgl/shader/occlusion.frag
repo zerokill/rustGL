@@ -2,7 +2,15 @@
 
 out vec4 FragColor;
 
+uniform bool isOrb;  // true = render white (orb), false = render black (occluder)
+
 void main()
 {
-    FragColor = vec4(1.0, 1.0, 1.0, 1.0);
+    if (isOrb) {
+        // Render orb as solid white
+        FragColor = vec4(1.0, 1.0, 1.0, 1.0);
+    } else {
+        // Render occluders as black
+        FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+    }
 }

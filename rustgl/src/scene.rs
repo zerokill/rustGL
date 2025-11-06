@@ -68,6 +68,10 @@ impl Scene {
         self.objects.len()
     }
 
+    pub fn objects_iter(&self) -> std::slice::Iter<SceneObject> {
+        self.objects.iter()
+    }
+
     /// Update the position of a specific light by index
     pub fn update_light_position(&mut self, index: usize, position: glm::Vec3) {
         if let Some(light) = self.lights.get_mut(index) {

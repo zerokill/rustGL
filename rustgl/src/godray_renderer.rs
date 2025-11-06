@@ -54,8 +54,8 @@ impl GodRayRenderer {
     pub fn apply(
         &mut self,
         scene_texture: GLuint,
-        orb_mesh: &Mesh,
-        orb_transform: &Transform,
+        scene: &crate::scene::Scene,
+        orb_index: usize,
         light_world_pos: glm::Vec3,
         view: &glm::Mat4,
         projection: &glm::Mat4,
@@ -66,7 +66,7 @@ impl GodRayRenderer {
     ) {
         let (light_screen_pos, is_on_screen) = self.world_to_screen_checked(light_world_pos, view, projection);
 
-        self.generate_occlusion_mask(orb_mesh, orb_transform, view, projection);
+        self.generate_occlusion_mask(scene, orb_index, view, projection);
 
         // Debug mode 1: Show occlusion buffer
         if debug_mode == 1 {
@@ -127,9 +127,10 @@ impl GodRayRenderer {
         (screen_pos, is_on_screen)
     }
 
-    fn generate_occlusion_mask(&mut self,
-        orb_mesh: &Mesh,
-        orb_transform: &Transform,
+    fn generate_occlusion_mask(
+        &mut self,
+        scene: &crate::scene::Scene,
+        orb_index: usize,
         view: &glm::Mat4,
         projection: &glm::Mat4,
     ) {
@@ -140,10 +141,19 @@ impl GodRayRenderer {
             gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
 
             self.occlusion_shader.use_program();
-            self.occlusion_shader.set_mat4("model", &orb_transform.to_matrix());
             self.occlusion_shader.set_mat4("view", view);
             self.occlusion_shader.set_mat4("projection", projection);
-            orb_mesh.draw();
+
+            // Render all scene objects to build depth buffer
+            for (i, obj) in scene.objects_iter().enumerate() {
+                self.occlusion_shader.set_mat4("model", &obj.transform.to_matrix());
+
+                // Set uniform to indicate if this is the orb or an occluder
+                let is_orb = i == orb_index;
+                self.occlusion_shader.set_bool("isOrb", is_orb);
+
+                obj.mesh.draw();
+            }
         }
 
         // Unbind the framebuffer so we can read from its texture
