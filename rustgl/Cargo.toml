@@ -6,7 +6,10 @@ edition = "2021"
 [dependencies]
 rand = "0.8"
 colored = "2.0"
-glfw = "0.54"
+glfw = "0.58"
 gl = "0.14"
 nalgebra-glm = "0.18"
 image = "0.24"
+
+# UI
+egui_glfw = "0.55"

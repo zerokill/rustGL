@@ -1,5 +1,5 @@
 use gl::types::*;
-use image::{DynamicImage, GenericImageView};
+use image::GenericImageView;
 use std::path::Path;
 
 pub enum TextureType {
@@ -9,7 +9,9 @@ pub enum TextureType {
 
 pub struct Texture {
     pub id: GLuint,
+    #[allow(dead_code)]
     pub width: u32,
+    #[allow(dead_code)]
     pub height: u32,
     pub texture_type: TextureType,
 }

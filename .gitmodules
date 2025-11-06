@@ -1,0 +1,3 @@
+[submodule "external/egui_glfw"]
+	path = external/egui_glfw
+	url = https://github.com/xeymy/egui_glfw.git

@@ -1,7 +1,6 @@
 use crate::framebuffer::Framebuffer;
 use crate::mesh::Mesh;
 use crate::shader::Shader;
-use crate::transform::Transform;
 use gl::types::*;
 use nalgebra_glm as glm;
 
@@ -21,6 +20,7 @@ pub struct GodRayRenderer {
     pub density: f32,
     pub weight: f32,
     pub num_samples: i32,
+    #[allow(dead_code)]
     pub luminance_threshold: f32,
 }
 

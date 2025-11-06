@@ -27,6 +27,7 @@ use std::time::Instant;
 use texture::Texture;
 use transform::Transform;
 use godray_renderer::GodRayRenderer;
+use egui_glfw::egui;
 
 struct AppState {
     wireframe_mode: bool,
@@ -102,6 +103,10 @@ fn main() {
     window.make_current();
     window.set_key_polling(true);
     window.set_framebuffer_size_polling(true);
+    window.set_cursor_pos_polling(true);
+    window.set_mouse_button_polling(true);
+    window.set_scroll_polling(true);
+    window.set_char_polling(true);
 
     // Enable V-Sync to cap FPS at monitor refresh rate (usually 60 FPS)
     glfw.set_swap_interval(glfw::SwapInterval::Sync(1));
@@ -115,12 +120,33 @@ fn main() {
         println!("OpenGL Version: {}", version.to_str().unwrap());
     }
 
+    // Get actual framebuffer size (important for HiDPI/Retina displays)
+    let (fb_width, fb_height) = window.get_framebuffer_size();
+
+    // Initialize egui
+    let mut egui_painter = egui_glfw::Painter::new(&mut window);
+    // CRITICAL: Set painter size to framebuffer dimensions (physical pixels) for HiDPI
+    egui_painter.set_size(fb_width as u32, fb_height as u32);
+    let egui_ctx = egui::Context::default();
+
+    // Set initial pixels_per_point for HiDPI displays
+    let native_pixels_per_point = window.get_content_scale().0;
+    egui_ctx.set_pixels_per_point(native_pixels_per_point);
+
+    // Use window size (logical pixels) for screen_rect
+    let (window_width, window_height) = window.get_size();
+    let mut egui_input = egui_glfw::EguiInputState::new(egui::RawInput {
+        screen_rect: Some(egui::Rect::from_min_size(
+            egui::Pos2::new(0f32, 0f32),
+            egui::vec2(window_width as f32, window_height as f32),
+        )),
+        ..Default::default()
+    });
+    egui_input.input.time = Some(0.01);
+
     let shader = Shader::new("shader/basic.vert", "shader/basic.frag");
     // Load a test texture
     let texture = Texture::new("resources/textures/livia.png").expect("Failed to load texture");
-
-    // Get actual framebuffer size (important for HiDPI/Retina displays)
-    let (fb_width, fb_height) = window.get_framebuffer_size();
 
     // Create bloom renderer (handles all framebuffers and post-processing)
     let mut bloom_renderer = BloomRenderer::new(fb_width as u32, fb_height as u32);
@@ -261,6 +287,9 @@ fn main() {
             &mut state,
             &mut bloom_renderer,
             &mut godray_renderer,
+            &mut egui_painter,
+            &mut egui_input,
+            &egui_ctx,
             delta_time,
         );
         update(delta_time, &mut time, &mut scene);
@@ -270,7 +299,6 @@ fn main() {
         bloom_renderer.render(
             || {
                 render_scene(
-                    &mut window,
                     &scene,
                     &shader,
                     &texture,
@@ -291,6 +319,10 @@ fn main() {
             let view = camera.get_view_matrix();
             let projection = glm::perspective(fb_width as f32 / fb_height as f32, camera.zoom.to_radians(), 0.1, 100.0);
 
+            // Update godray parameters from UI state
+            godray_renderer.exposure = state.godray_exposure;
+            godray_renderer.decay = state.godray_decay;
+
             godray_renderer.apply(
                 bloom_renderer.scene_texture(),
                 &scene,
@@ -305,6 +337,49 @@ fn main() {
             );
         }
 
+        // Render UI
+        egui_input.input.time = Some(glfw.get_time());
+
+        // IMPORTANT: Update screen_rect every frame because take() consumes it
+        // Use window size (logical pixels) - egui scales with pixels_per_point
+        let (width, height) = window.get_size();
+        egui_input.input.screen_rect = Some(egui::Rect::from_min_size(
+            egui::Pos2::new(0f32, 0f32),
+            egui::vec2(width as f32, height as f32),
+        ));
+
+        egui_ctx.begin_frame(egui_input.input.take());
+        render_ui(&egui_ctx, &mut state, delta_time, frame_count, &camera);
+
+        let egui::FullOutput {
+            platform_output,
+            textures_delta,
+            shapes,
+            pixels_per_point,
+            ..
+        } = egui_ctx.end_frame();
+
+        // Apply pixels_per_point from egui back to context for next frame
+        egui_ctx.set_pixels_per_point(pixels_per_point);
+
+        // Handle clipboard
+        if !platform_output.copied_text.is_empty() {
+            egui_glfw::copy_to_clipboard(&mut egui_input, platform_output.copied_text);
+        }
+
+        let clipped_shapes = egui_ctx.tessellate(shapes, pixels_per_point);
+
+        // Set up OpenGL state for egui rendering
+        let (fb_width, fb_height) = window.get_framebuffer_size();
+        unsafe {
+            gl::Viewport(0, 0, fb_width, fb_height);
+            gl::Disable(gl::DEPTH_TEST);
+            gl::Enable(gl::BLEND);
+            gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
+        }
+
+        egui_painter.paint_and_update_textures(pixels_per_point, &clipped_shapes, &textures_delta);
+
         window.swap_buffers();
     }
 }
@@ -316,146 +391,105 @@ fn process_events(
     state: &mut AppState,
     bloom_renderer: &mut BloomRenderer,
     godray_renderer: &mut GodRayRenderer,
+    egui_painter: &mut egui_glfw::Painter,
+    egui_input: &mut egui_glfw::EguiInputState,
+    egui_ctx: &egui::Context,
     delta_time: f32,
 ) {
     window.glfw.poll_events();
 
-    // Handle window events (resize, key presses, etc.)
+    // Handle events
     for (_, event) in glfw::flush_messages(events) {
-        handle_window_event(
-            window,
-            event,
-            state,
-            bloom_renderer,
-            godray_renderer,
-        );
+        match event {
+            glfw::WindowEvent::Close => {
+                window.set_should_close(true);
+            }
+            glfw::WindowEvent::FramebufferSize(width, height) => {
+                bloom_renderer.resize(width as u32, height as u32);
+                godray_renderer.resize(width as u32, height as u32);
+
+                let (win_width, win_height) = window.get_size();
+
+                unsafe {
+                    gl::Viewport(0, 0, width, height);
+                }
+
+                // Update egui painter canvas size (physical pixels)
+                egui_painter.set_size(width as u32, height as u32);
+
+                // IMPORTANT: Let egui_glfw handle resize to update screen_rect
+                // Pass window size (logical pixels), not framebuffer size
+                egui_glfw::handle_event(
+                    glfw::WindowEvent::FramebufferSize(win_width, win_height),
+                    egui_input
+                );
+            }
+            glfw::WindowEvent::Key(key, _, action, _) => {
+                handle_key_event(key, action, state, window);
+            }
+            glfw::WindowEvent::CursorPos(x, y) => {
+                // Let egui_glfw handle cursor events normally (expects window coordinates)
+                egui_glfw::handle_event(glfw::WindowEvent::CursorPos(x, y), egui_input);
+            }
+            _ => {
+                egui_glfw::handle_event(event, egui_input);
+            }
+        }
     }
 
     // Process camera input EVERY FRAME (not event-based)
     // This ensures smooth, consistent movement
+    // Only block camera if UI has pointer focus (dragging sliders, clicking buttons)
+    // We don't have text input fields, so keyboard is always available for camera
+    if !egui_ctx.wants_pointer_input() {
+        // WASD for movement (relative to camera orientation)
+        if window.get_key(Key::W) == Action::Press {
+            camera.process_keyboard(CameraMovement::Forward, delta_time);
+        }
+        if window.get_key(Key::S) == Action::Press {
+            camera.process_keyboard(CameraMovement::Backward, delta_time);
+        }
+        if window.get_key(Key::A) == Action::Press {
+            camera.process_keyboard(CameraMovement::Left, delta_time);
+        }
+        if window.get_key(Key::D) == Action::Press {
+            camera.process_keyboard(CameraMovement::Right, delta_time);
+        }
+        if window.get_key(Key::Q) == Action::Press {
+            camera.process_keyboard(CameraMovement::Down, delta_time);
+        }
+        if window.get_key(Key::E) == Action::Press {
+            camera.process_keyboard(CameraMovement::Up, delta_time);
+        }
 
-    // WASD for movement (relative to camera orientation)
-    if window.get_key(Key::W) == Action::Press {
-        camera.process_keyboard(CameraMovement::Forward, delta_time);
-    }
-    if window.get_key(Key::S) == Action::Press {
-        camera.process_keyboard(CameraMovement::Backward, delta_time);
-    }
-    if window.get_key(Key::A) == Action::Press {
-        camera.process_keyboard(CameraMovement::Left, delta_time);
-    }
-    if window.get_key(Key::D) == Action::Press {
-        camera.process_keyboard(CameraMovement::Right, delta_time);
-    }
-    if window.get_key(Key::Q) == Action::Press {
-        camera.process_keyboard(CameraMovement::Down, delta_time);
-    }
-    if window.get_key(Key::E) == Action::Press {
-        camera.process_keyboard(CameraMovement::Up, delta_time);
-    }
-
-    // Arrow keys for looking around
-    let look_speed = 250.0; // degrees per second
-    if window.get_key(Key::Left) == Action::Press {
-        camera.process_mouse_movement(-look_speed * delta_time, 0.0, true);
-    }
-    if window.get_key(Key::Right) == Action::Press {
-        camera.process_mouse_movement(look_speed * delta_time, 0.0, true);
-    }
-    if window.get_key(Key::Up) == Action::Press {
-        camera.process_mouse_movement(0.0, look_speed * delta_time, true);
-    }
-    if window.get_key(Key::Down) == Action::Press {
-        camera.process_mouse_movement(0.0, -look_speed * delta_time, true);
+        // Arrow keys for looking around
+        let look_speed = 250.0; // degrees per second
+        if window.get_key(Key::Left) == Action::Press {
+            camera.process_mouse_movement(-look_speed * delta_time, 0.0, true);
+        }
+        if window.get_key(Key::Right) == Action::Press {
+            camera.process_mouse_movement(look_speed * delta_time, 0.0, true);
+        }
+        if window.get_key(Key::Up) == Action::Press {
+            camera.process_mouse_movement(0.0, look_speed * delta_time, true);
+        }
+        if window.get_key(Key::Down) == Action::Press {
+            camera.process_mouse_movement(0.0, -look_speed * delta_time, true);
+        }
     }
 }
 
-fn handle_window_event(
+fn handle_key_event(
+    key: Key,
+    action: Action,
+    _state: &mut AppState,
     window: &mut glfw::Window,
-    event: glfw::WindowEvent,
-    state: &mut AppState,
-    bloom_renderer: &mut BloomRenderer,
-    godray_renderer: &mut GodRayRenderer,
 ) {
-    match event {
-        glfw::WindowEvent::Key(Key::Escape, _, Action::Press, _) => {
+    match (key, action) {
+        (Key::Escape, Action::Press) => {
             window.set_should_close(true);
         }
-        glfw::WindowEvent::Key(Key::Num1, _, Action::Press, _) => {
-            state.wireframe_mode = !state.wireframe_mode;
-            println!(
-                "Wireframe mode: {}",
-                if state.wireframe_mode { "ON" } else { "OFF" }
-            );
-        }
-        glfw::WindowEvent::Key(Key::Num2, _, Action::Press, _) => {
-            state.use_texture = !state.use_texture;
-            println!("Texture: {}", if state.use_texture { "ON" } else { "OFF" });
-        }
-        glfw::WindowEvent::Key(Key::Num3, _, Action::Press, _) => {
-            state.bloom_threshold += 0.1;
-            println!("Bloom threshold: {:.1}", state.bloom_threshold);
-        }
-        glfw::WindowEvent::Key(Key::Num4, _, Action::Press, _) => {
-            state.bloom_threshold = (state.bloom_threshold - 0.1).max(0.0);
-            println!("Bloom threshold: {:.1}", state.bloom_threshold);
-        }
-        glfw::WindowEvent::Key(Key::Num5, _, Action::Press, _) => {
-            state.bloom_strength += 0.1;
-            println!("Bloom strength: {:.1}", state.bloom_strength);
-        }
-        glfw::WindowEvent::Key(Key::Num6, _, Action::Press, _) => {
-            state.bloom_strength = (state.bloom_strength - 0.1).max(0.0);
-            println!("Bloom strength: {:.1}", state.bloom_strength);
-        }
-        glfw::WindowEvent::Key(Key::Num7, _, Action::Press, _) => {
-            state.bloom_enabled = !state.bloom_enabled;
-            println!("Bloom: {}", if state.bloom_enabled { "ON" } else { "OFF" });
-        }
-        glfw::WindowEvent::Key(Key::Num8, _, Action::Press, _) => {
-            state.skybox_enabled = !state.skybox_enabled;
-            println!("Skybox: {}", if state.skybox_enabled { "ON" } else { "OFF" });
-        }
-        glfw::WindowEvent::Key(Key::Num9, _, Action::Press, _) => {
-            state.godray_enabled = !state.godray_enabled;
-            println!("God rays: {}", if state.godray_enabled { "ON" } else { "OFF" });
-        }
-        glfw::WindowEvent::Key(Key::O, _, Action::Press, _) => {
-            state.godray_exposure += 0.1;
-            println!("God ray exposure: {:.2}", state.godray_exposure);
-        }
-        glfw::WindowEvent::Key(Key::P, _, Action::Press, _) => {
-            state.godray_exposure = (state.godray_exposure - 0.1).max(0.0);
-            println!("God ray exposure: {:.2}", state.godray_exposure);
-        }
-        glfw::WindowEvent::Key(Key::Num0, _, Action::Press, _) => {
-            state.godray_debug_mode = (state.godray_debug_mode + 1) % 4;
-            let mode_name = match state.godray_debug_mode {
-                0 => "OFF (normal rendering)",
-                1 => "Occlusion buffer (white orb on black)",
-                2 => "Radial blur buffer (blurred rays)",
-                3 => "God rays only (no scene)",
-                _ => "Unknown",
-            };
-            println!("God ray debug mode: {}", mode_name);
-        }
-        glfw::WindowEvent::FramebufferSize(width, height) => {
-            bloom_renderer.resize(width as u32, height as u32);
-            godray_renderer.resize(width as u32, height as u32);
-            unsafe {
-                gl::Viewport(0, 0, width, height);
-            }
-        },
         _ => {}
-    }
-}
-
-fn check_gl_error(location: &str) {
-    unsafe {
-        let err = gl::GetError();
-        if err != gl::NO_ERROR {
-            println!("OpenGL Error at {}: {}", location, err);
-        }
     }
 }
 
@@ -516,7 +550,6 @@ fn update(delta_time: f32, time: &mut f32, scene: &mut Scene) {
 }
 
 fn render_scene(
-    window: &mut glfw::Window,
     scene: &Scene,
     shader: &Shader,
     texture: &Texture,
@@ -527,7 +560,6 @@ fn render_scene(
         gl::Enable(gl::DEPTH_TEST);
         gl::ClearColor(0.1, 0.1, 0.2, 1.0);
         gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
-        check_gl_error("clear");
 
         // Set polygon mode based on wireframe toggle
         if state.wireframe_mode {
@@ -551,23 +583,100 @@ fn render_scene(
     }
 }
 
-fn render_to_screen(
-    window: &mut glfw::Window,
-    screen_quad: &Mesh,
-    screen_shader: &Shader,
-    texture_id: GLuint,
+fn render_ui(
+    egui_ctx: &egui::Context,
+    state: &mut AppState,
+    delta_time: f32,
+    frame_count: u32,
+    camera: &Camera,
 ) {
-    unsafe {
-        gl::Disable(gl::DEPTH_TEST); // No depth test for screen quad
-        gl::ClearColor(1.0, 1.0, 1.0, 1.0);
-        gl::Clear(gl::COLOR_BUFFER_BIT);
+    // Main debug panel
+    egui::Window::new("🎮 RustGL Debug Panel")
+        .default_width(300.0)
+        .show(egui_ctx, |ui| {
+            ui.heading("Performance");
+            ui.separator();
 
-        screen_shader.use_program();
-        gl::ActiveTexture(gl::TEXTURE0);
-        gl::BindTexture(gl::TEXTURE_2D, texture_id);
-        screen_shader.set_int("screenTexture", 0);
+            // FPS display
+            let fps = 1.0 / delta_time;
+            ui.label(format!("FPS: {:.0}", fps));
+            ui.label(format!("Frame time: {:.2} ms", delta_time * 1000.0));
+            ui.label(format!("Frames: {}", frame_count));
 
-        screen_quad.draw();
-    }
-    window.swap_buffers();
+            ui.add_space(10.0);
+
+            // Camera position
+            ui.heading("Camera");
+            ui.separator();
+            ui.label(format!(
+                "Position: ({:.1}, {:.1}, {:.1})",
+                camera.position.x, camera.position.y, camera.position.z
+            ));
+
+            ui.add_space(10.0);
+
+            // Rendering toggles
+            ui.heading("Rendering");
+            ui.separator();
+            ui.checkbox(&mut state.wireframe_mode, "Wireframe Mode");
+            ui.checkbox(&mut state.use_texture, "Use Textures");
+            ui.checkbox(&mut state.skybox_enabled, "Skybox");
+
+            ui.add_space(10.0);
+
+            // Bloom controls
+            ui.heading("Bloom Post-Processing");
+            ui.separator();
+            ui.checkbox(&mut state.bloom_enabled, "Enable Bloom");
+
+            if state.bloom_enabled {
+                ui.add(
+                    egui::Slider::new(&mut state.bloom_threshold, 0.0..=2.0)
+                        .text("Threshold")
+                );
+                ui.add(
+                    egui::Slider::new(&mut state.bloom_strength, 0.0..=3.0)
+                        .text("Strength")
+                );
+            }
+
+            ui.add_space(10.0);
+
+            // God ray controls
+            ui.heading("God Rays");
+            ui.separator();
+            ui.checkbox(&mut state.godray_enabled, "Enable God Rays");
+
+            if state.godray_enabled {
+                ui.add(
+                    egui::Slider::new(&mut state.godray_strength, 0.0..=2.0)
+                        .text("Strength")
+                );
+                ui.add(
+                    egui::Slider::new(&mut state.godray_exposure, 0.0..=2.0)
+                        .text("Exposure")
+                );
+                ui.add(
+                    egui::Slider::new(&mut state.godray_decay, 0.8..=1.0)
+                        .text("Decay")
+                );
+
+                ui.add_space(5.0);
+                ui.label("Debug Mode:");
+                ui.radio_value(&mut state.godray_debug_mode, 0, "Off (Normal)");
+                ui.radio_value(&mut state.godray_debug_mode, 1, "Occlusion Buffer");
+                ui.radio_value(&mut state.godray_debug_mode, 2, "Radial Blur");
+                ui.radio_value(&mut state.godray_debug_mode, 3, "Rays Only");
+            }
+
+            ui.add_space(10.0);
+
+            // Keyboard shortcuts help
+            ui.heading("Controls");
+            ui.separator();
+            ui.label("WASD - Move camera");
+            ui.label("QE - Move up/down");
+            ui.label("Arrows - Look around");
+            ui.label("ESC - Quit");
+        });
 }
