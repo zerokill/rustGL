@@ -60,7 +60,7 @@ impl GodRayRenderer {
         view: &glm::Mat4,
         projection: &glm::Mat4,
         strength: f32,
-        debug_mode: u8,  // 0 = off, 1 = occlusion, 2 = radial blur, 3 = rays only
+        debug_mode: u8,  // 0 = off, 1 = occlusion, 2 = radial blur
         window_width: i32,
         window_height: i32,
     ) {
@@ -88,7 +88,7 @@ impl GodRayRenderer {
         }
 
         // Debug mode 2 & 3: Show radial blur buffer (god rays only)
-        if debug_mode == 2 || debug_mode == 3 {
+        if debug_mode == 2 {
             self.render_debug_buffer(self.radial_blur_fbo.texture(), window_width, window_height);
             return;
         }

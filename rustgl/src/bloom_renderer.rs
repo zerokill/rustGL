@@ -9,6 +9,7 @@ pub struct BloomRenderer {
     bright_pass_fbo: Framebuffer,
     blur_fbo1: Framebuffer,
     blur_fbo2: Framebuffer,
+    composite_fbo: Framebuffer,
 
     // Shaders
     bright_pass_shader: Shader,
@@ -30,6 +31,7 @@ impl BloomRenderer {
             bright_pass_fbo: Framebuffer::new(width, height),
             blur_fbo1: Framebuffer::new(width, height),
             blur_fbo2: Framebuffer::new(width, height),
+            composite_fbo: Framebuffer::new(width, height),
 
             bright_pass_shader: Shader::new("shader/screen.vert", "shader/bright_pass.frag"),
             blur_shader: Shader::new("shader/screen.vert", "shader/blur.frag"),
@@ -47,11 +49,16 @@ impl BloomRenderer {
         self.bright_pass_fbo.resize(width, height);
         self.blur_fbo1.resize(width, height);
         self.blur_fbo2.resize(width, height);
+        self.composite_fbo.resize(width, height);
     }
 
     /// Get the scene texture for use by other post-processing effects
     pub fn scene_texture(&self) -> GLuint {
         self.scene_fbo.texture()
+    }
+
+    pub fn composite_texture(&self) -> GLuint {
+        self.composite_fbo.texture()
     }
 
     /// Main entry point - renders the scene with optional bloom
@@ -133,9 +140,10 @@ impl BloomRenderer {
                 first_iteration = false;
             }
         }
+        Framebuffer::unbind();
 
         // Pass 5: Composite bloom with scene
-        Framebuffer::unbind();
+        self.composite_fbo.bind();
         unsafe {
             gl::Viewport(0, 0, window_width, window_height);
             gl::Disable(gl::DEPTH_TEST);
@@ -152,11 +160,12 @@ impl BloomRenderer {
             self.composite_shader.set_float("bloomStrength", strength);
             self.screen_quad.draw();
         }
+        Framebuffer::unbind();
     }
 
     /// Render scene without bloom
     fn render_passthrough(&self, window_width: i32, window_height: i32) {
-        Framebuffer::unbind();
+        self.composite_fbo.bind();
         unsafe {
             gl::Viewport(0, 0, window_width, window_height);
             gl::Disable(gl::DEPTH_TEST);
@@ -169,5 +178,6 @@ impl BloomRenderer {
             self.screen_shader.set_int("screenTexture", 0);
             self.screen_quad.draw();
         }
+        Framebuffer::unbind();
     }
 }

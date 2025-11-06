@@ -38,7 +38,6 @@ struct AppState {
     bloom_strength: f32,
     bloom_enabled: bool,
 
-    godray_enabled: bool,
     godray_strength: f32,
     godray_exposure: f32,
     godray_decay: f32,
@@ -56,7 +55,6 @@ impl AppState {
             bloom_strength: 1.0,
             bloom_enabled: true,
 
-            godray_enabled: true,
             godray_strength: 1.0,
             godray_exposure: 0.5,
             godray_decay: 0.97,
@@ -314,28 +312,26 @@ fn main() {
         );
 
         // In render loop - after bloom
-        if state.godray_enabled {
-            let light_pos = scene.lights()[3].position;
-            let view = camera.get_view_matrix();
-            let projection = glm::perspective(fb_width as f32 / fb_height as f32, camera.zoom.to_radians(), 0.1, 100.0);
+        let light_pos = scene.lights()[3].position;
+        let view = camera.get_view_matrix();
+        let projection = glm::perspective(fb_width as f32 / fb_height as f32, camera.zoom.to_radians(), 0.1, 100.0);
 
-            // Update godray parameters from UI state
-            godray_renderer.exposure = state.godray_exposure;
-            godray_renderer.decay = state.godray_decay;
+        // Update godray parameters from UI state
+        godray_renderer.exposure = state.godray_exposure;
+        godray_renderer.decay = state.godray_decay;
 
-            godray_renderer.apply(
-                bloom_renderer.scene_texture(),
-                &scene,
-                6,  // orb_index
-                light_pos,
-                &view,
-                &projection,
-                state.godray_strength,
-                state.godray_debug_mode,
-                fb_width,
-                fb_height,
-            );
-        }
+        godray_renderer.apply(
+            bloom_renderer.composite_texture(),
+            &scene,
+            6,  // orb_index
+            light_pos,
+            &view,
+            &projection,
+            state.godray_strength,
+            state.godray_debug_mode,
+            fb_width,
+            fb_height,
+        );
 
         // Render UI
         egui_input.input.time = Some(glfw.get_time());
@@ -600,8 +596,6 @@ fn render_ui(
             // FPS display
             let fps = 1.0 / delta_time;
             ui.label(format!("FPS: {:.0}", fps));
-            ui.label(format!("Frame time: {:.2} ms", delta_time * 1000.0));
-            ui.label(format!("Frames: {}", frame_count));
 
             ui.add_space(10.0);
 
@@ -645,29 +639,25 @@ fn render_ui(
             // God ray controls
             ui.heading("God Rays");
             ui.separator();
-            ui.checkbox(&mut state.godray_enabled, "Enable God Rays");
 
-            if state.godray_enabled {
-                ui.add(
-                    egui::Slider::new(&mut state.godray_strength, 0.0..=2.0)
-                        .text("Strength")
-                );
-                ui.add(
-                    egui::Slider::new(&mut state.godray_exposure, 0.0..=2.0)
-                        .text("Exposure")
-                );
-                ui.add(
-                    egui::Slider::new(&mut state.godray_decay, 0.8..=1.0)
-                        .text("Decay")
-                );
+            ui.add(
+                egui::Slider::new(&mut state.godray_strength, 0.0..=2.0)
+                    .text("Strength")
+            );
+            ui.add(
+                egui::Slider::new(&mut state.godray_exposure, 0.0..=2.0)
+                    .text("Exposure")
+            );
+            ui.add(
+                egui::Slider::new(&mut state.godray_decay, 0.8..=1.0)
+                    .text("Decay")
+            );
 
-                ui.add_space(5.0);
-                ui.label("Debug Mode:");
-                ui.radio_value(&mut state.godray_debug_mode, 0, "Off (Normal)");
-                ui.radio_value(&mut state.godray_debug_mode, 1, "Occlusion Buffer");
-                ui.radio_value(&mut state.godray_debug_mode, 2, "Radial Blur");
-                ui.radio_value(&mut state.godray_debug_mode, 3, "Rays Only");
-            }
+            ui.add_space(5.0);
+            ui.label("Debug Mode:");
+            ui.radio_value(&mut state.godray_debug_mode, 0, "Off (Normal)");
+            ui.radio_value(&mut state.godray_debug_mode, 1, "Occlusion Buffer");
+            ui.radio_value(&mut state.godray_debug_mode, 2, "Radial Blur");
 
             ui.add_space(10.0);
 
