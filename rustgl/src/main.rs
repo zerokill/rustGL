@@ -13,6 +13,7 @@ mod texture;
 mod transform;
 mod godray_renderer;
 mod performance_monitor;
+mod noise;
 
 use bloom_renderer::BloomRenderer;
 use camera::{Camera, CameraMovement};
@@ -30,6 +31,7 @@ use godray_renderer::GodRayRenderer;
 use egui_glfw::egui;
 use performance_monitor::PerformanceMonitor;
 use egui::RichText;
+use noise::PerlinNoise;
 
 // Constants for magic numbers
 const CAMERA_LOOK_SPEED: f32 = 250.0; // degrees per second
@@ -164,6 +166,15 @@ fn main() {
 
     let mut state = AppState::new();
 
+    let perlin = PerlinNoise::new(42);
+
+    let noise_scale = 0.5;
+    let noise_plane = Mesh::noise_test_plane(
+        &|x, y| perlin.noise2d(x, y),
+        100,
+        noise_scale,
+    );
+
     let mut scene = Scene::new();
 
     // Set up skybox
@@ -256,6 +267,16 @@ fn main() {
         glm::vec3(6.0, 2.0, 0.0),
         glm::vec3(10.0, 10.0, 10.0), // Very bright white light
     ));
+
+    scene.add_object(
+        noise_plane,
+        Material::matte(glm::vec3(0.5, 0.7, 0.3)),
+        Transform::from_position_scale(
+            glm::vec3(0.0, 0.0, 0.0), // Center position
+            glm::vec3(5.0, 2.0, 5.0), // Scale
+        )
+    );
+
 
     let mut camera = Camera::default();
 
@@ -709,6 +730,7 @@ fn render_performance_ui(
     egui::Window::new("Performance Counters")
         .default_width(400.0)
         .default_pos([320.0, 20.0])
+        .default_open(false)
         .show(egui_ctx, |ui| {
             ui.heading("Frame Statistics");
             ui.separator();

@@ -467,6 +467,63 @@ impl Mesh {
         Mesh::new_indexed(&vertices, &indices)
     }
 
+    pub fn noise_test_plane(noise_fn: &dyn Fn(f32, f32) -> f32, size: usize, scale: f32) -> Self {
+        let mut vertices = Vec::new();
+        let mut indices = Vec::new();
+
+        let step = 1.0 / size as f32;
+
+        // generate vertices in grid
+        for y in 0..=size {
+            for x in 0..=size {
+                let xf = (x as f32 - size as f32 / 2.0) * step * 10.0;
+                let zf = (y as f32 - size as f32 / 2.0) * step * 10.0;
+
+                // sample noise at this position
+                let height = noise_fn(xf * scale, zf * scale);
+
+                // color based on height (green = low, white = high)
+                let color_val = (height + 1.0) * 0.5; // map -1..1 to 0.1
+                let color = [color_val, color_val, color_val];
+                
+                // For now use simple upward normal.
+                let normal = [0.0, 1.0, 0.0];
+
+                let u = x as f32 / size as f32;
+                let v = y as f32 / size as f32;
+
+                vertices.push(Vertex::new(
+                    [xf, height, zf],
+                    color,
+                    normal,
+                    [u, v],
+                ));
+            }
+        }
+
+        // Generate indices for triangles
+        for y in 0..size {
+            for x in 0..size {
+                let top_left = (y * (size + 1) + x) as u32;
+                let top_right = top_left + 1;
+                let bottom_left = ((y + 1) * (size + 1) + x) as u32;
+                let bottom_right = bottom_left + 1;
+
+                // First triangle (top-left, bottom-left, top-right)
+                indices.push(top_left);
+                indices.push(bottom_left);
+                indices.push(top_right);
+
+                // Second triangle (top-right, bottom-left, bottom-right)
+                indices.push(top_right);
+                indices.push(bottom_left);
+                indices.push(bottom_right);
+            }
+        }
+
+        Mesh::new_indexed(&vertices, &indices)
+    }
+
     pub fn skybox_cube() -> Self {
         // Simple cube centered at origin
         // We only need positions since we use them as texture coordinates
