@@ -147,6 +147,8 @@ Recent commits show:
 2. **Read the actual implementation files** before writing lesson content:
    - `rustgl/src/mesh.rs` - Check vertex structure, primitives, attributes
    - `rustgl/src/shader.rs` - Check what shader methods exist
+   - `rustgl/src/scene.rs` - Check scene system and how objects are managed
+   - `rustgl/src/transform.rs` - Check transform system for positioning/scaling
    - `rustgl/src/main.rs` - Check current rendering setup
    - `rustgl/shader/basic.vert` and `rustgl/shader/basic.frag` - Check shader code
    - Other relevant files based on the lesson topic
@@ -156,27 +158,49 @@ Recent commits show:
    - Note which vertex attributes are already configured (position, color, normal, UV)
    - Check what shader uniforms and methods already exist
    - Identify what data structures are already in place
+   - **Check the scene system** - understand how objects are added and managed
 
-4. **Write the lesson to match reality**:
+4. **Design for clean architecture integration**:
+   - **ALWAYS integrate with the Scene system** - use `scene.add_object()` for all renderable objects
+   - **Respect ownership model** - Scene owns meshes, so design structs to generate meshes on demand
+   - **Use Transform for positioning** - `Transform::from_position()` or `Transform::from_position_scale()`
+   - **Avoid duplication** - Don't store data in multiple places
+   - **Separation of concerns** - Data structures store data, Scene handles rendering
+   - **Example**: For Terrain, store height data and generate mesh on demand with `create_mesh()`, rather than storing the mesh
+   - When in doubt, ask the student about architecture preferences before finalizing the lesson
+
+5. **Write the lesson to match reality**:
    - Mark already-completed tasks as ✅ "Already Done"
    - Focus lesson content on what ACTUALLY needs to be implemented
    - Provide accurate line numbers and code references
    - Update time estimates based on actual remaining work
    - Avoid teaching features that are already implemented
+   - **Show proper scene integration** in all examples
 
-5. **Example of good lesson structure**:
+6. **Example of good lesson structure**:
    ```markdown
    ## Current State Check
 
    ✅ **Already implemented**: UV coordinates in Vertex struct (mesh.rs:11)
    ✅ **Already implemented**: Vertex shader passes UVs (basic.vert:5)
+   ✅ **Already implemented**: Scene system for managing objects (scene.rs)
+   ✅ **Already implemented**: Transform system for positioning (transform.rs)
    ❌ **Still needed**: Fragment shader texture sampling
-   ❌ **Still needed**: Shader utility methods (set_int, set_bool)
+   ❌ **Still needed**: Add textured object to scene
 
    ## Tasks
 
    ### Task 1: Update Fragment Shader (NEW - needs implementation)
    ...
+
+   ### Task 3: Add to Scene (Clean integration)
+   ```rust
+   scene.add_object(
+       textured_mesh,
+       Material::plastic(glm::vec3(1.0, 1.0, 1.0)),
+       Transform::from_position(glm::vec3(0.0, 0.0, 0.0))
+   );
+   ```
    ```
 
 ### When responding to the student:
