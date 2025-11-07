@@ -485,19 +485,14 @@ impl Mesh {
                 // color based on height (green = low, white = high)
                 let color_val = (height + 1.0) * 0.5; // map -1..1 to 0.1
                 let color = [color_val, color_val, color_val];
-                
+
                 // For now use simple upward normal.
                 let normal = [0.0, 1.0, 0.0];
 
                 let u = x as f32 / size as f32;
                 let v = y as f32 / size as f32;
 
-                vertices.push(Vertex::new(
-                    [xf, height, zf],
-                    color,
-                    normal,
-                    [u, v],
-                ));
+                vertices.push(Vertex::new([xf, height, zf], color, normal, [u, v]));
             }
         }
 

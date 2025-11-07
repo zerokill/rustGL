@@ -206,9 +206,7 @@ impl PerformanceMonitor {
         let mut counters: Vec<_> = self
             .counters
             .iter()
-            .map(|(name, counter)| {
-                (name.clone(), counter.get_last_ms(), counter.get_avg_ms())
-            })
+            .map(|(name, counter)| (name.clone(), counter.get_last_ms(), counter.get_avg_ms()))
             .collect();
         counters.sort_by(|a, b| a.0.cmp(&b.0));
         counters

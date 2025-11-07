@@ -63,7 +63,8 @@ impl PerlinNoise {
         let aa = self.permutation[(self.permutation[xi as usize] as usize + yi as usize) % 512];
         let ab = self.permutation[(self.permutation[xi as usize] as usize + yi as usize + 1) % 512];
         let ba = self.permutation[(self.permutation[xi as usize + 1] as usize + yi as usize) % 512];
-        let bb = self.permutation[(self.permutation[xi as usize + 1] as usize + yi as usize + 1) % 512];
+        let bb =
+            self.permutation[(self.permutation[xi as usize + 1] as usize + yi as usize + 1) % 512];
 
         // Calculate gradiant influences at 4 corners
         let g1 = Self::grad2d(aa, xf, yf);

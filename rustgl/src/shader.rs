@@ -12,7 +12,7 @@ pub const MAX_LIGHTS: usize = 4;
 
 /// Manages a compiled and linked OpenGL shader program
 pub struct Shader {
-    pub id: u32, // OpenGL program ID
+    pub id: u32,                                  // OpenGL program ID
     uniform_cache: RefCell<HashMap<String, i32>>, // Cache for uniform locations
 }
 
@@ -86,7 +86,9 @@ impl Shader {
         };
 
         // Store in cache
-        self.uniform_cache.borrow_mut().insert(name.to_string(), location);
+        self.uniform_cache
+            .borrow_mut()
+            .insert(name.to_string(), location);
 
         location
     }

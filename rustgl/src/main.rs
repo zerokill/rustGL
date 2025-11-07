@@ -4,34 +4,34 @@ extern crate glfw;
 mod bloom_renderer;
 mod camera;
 mod framebuffer;
+mod godray_renderer;
 mod light;
 mod material;
 mod mesh;
+mod noise;
+mod performance_monitor;
 mod scene;
 mod shader;
 mod texture;
 mod transform;
-mod godray_renderer;
-mod performance_monitor;
-mod noise;
 
 use bloom_renderer::BloomRenderer;
 use camera::{Camera, CameraMovement};
+use egui::RichText;
+use egui_glfw::egui;
 use glfw::{Action, Context, Key};
+use godray_renderer::GodRayRenderer;
 use light::Light;
 use material::Material;
 use mesh::Mesh;
 use nalgebra_glm as glm;
+use noise::PerlinNoise;
+use performance_monitor::PerformanceMonitor;
 use scene::{Scene, SceneObjectTag};
 use shader::Shader;
 use std::time::Instant;
 use texture::Texture;
 use transform::Transform;
-use godray_renderer::GodRayRenderer;
-use egui_glfw::egui;
-use performance_monitor::PerformanceMonitor;
-use egui::RichText;
-use noise::PerlinNoise;
 
 // Constants for magic numbers
 const CAMERA_LOOK_SPEED: f32 = 250.0; // degrees per second
@@ -51,7 +51,7 @@ struct AppState {
     godray_strength: f32,
     godray_exposure: f32,
     godray_decay: f32,
-    godray_debug_mode: u8,  // 0 = off, 1 = occlusion, 2 = radial blur, 3 = rays only
+    godray_debug_mode: u8, // 0 = off, 1 = occlusion, 2 = radial blur, 3 = rays only
 }
 
 impl AppState {
@@ -162,7 +162,8 @@ fn main() {
     // Create bloom renderer (handles all framebuffers and post-processing)
     let mut bloom_renderer = BloomRenderer::new(fb_width as u32, fb_height as u32);
     // Create godray renderer with lower resolution for better performance
-    let mut godray_renderer = GodRayRenderer::new(fb_width as u32, fb_height as u32, GODRAY_RESOLUTION_SCALE);
+    let mut godray_renderer =
+        GodRayRenderer::new(fb_width as u32, fb_height as u32, GODRAY_RESOLUTION_SCALE);
 
     let mut state = AppState::new();
 
@@ -278,9 +279,8 @@ fn main() {
         Transform::from_position_scale(
             glm::vec3(0.0, 0.0, 0.0), // Center position
             glm::vec3(5.0, 2.0, 5.0), // Scale
-        )
+        ),
     );
-
 
     let mut camera = Camera::default();
 
@@ -340,14 +340,7 @@ fn main() {
 
         bloom_renderer.render(
             || {
-                render_scene(
-                    &scene,
-                    &shader,
-                    &texture,
-                    &camera,
-                    &state,
-                    aspect_ratio,
-                );
+                render_scene(&scene, &shader, &texture, &camera, &state, aspect_ratio);
             },
             state.bloom_threshold,
             state.bloom_strength,
@@ -471,7 +464,7 @@ fn process_events(
                 // Pass window size (logical pixels), not framebuffer size
                 egui_glfw::handle_event(
                     glfw::WindowEvent::FramebufferSize(win_width, win_height),
-                    egui_input
+                    egui_input,
                 );
             }
             glfw::WindowEvent::Key(key, _, action, _) => {
@@ -528,12 +521,7 @@ fn process_events(
     }
 }
 
-fn handle_key_event(
-    key: Key,
-    action: Action,
-    _state: &mut AppState,
-    window: &mut glfw::Window,
-) {
+fn handle_key_event(key: Key, action: Action, _state: &mut AppState, window: &mut glfw::Window) {
     match (key, action) {
         (Key::Escape, Action::Press) => {
             window.set_should_close(true);
@@ -678,14 +666,8 @@ fn render_ui(
             ui.checkbox(&mut state.bloom_enabled, "Enable Bloom");
 
             if state.bloom_enabled {
-                ui.add(
-                    egui::Slider::new(&mut state.bloom_threshold, 0.0..=2.0)
-                        .text("Threshold")
-                );
-                ui.add(
-                    egui::Slider::new(&mut state.bloom_strength, 0.0..=3.0)
-                        .text("Strength")
-                );
+                ui.add(egui::Slider::new(&mut state.bloom_threshold, 0.0..=2.0).text("Threshold"));
+                ui.add(egui::Slider::new(&mut state.bloom_strength, 0.0..=3.0).text("Strength"));
             }
 
             ui.add_space(10.0);
@@ -694,18 +676,9 @@ fn render_ui(
             ui.heading("God Rays");
             ui.separator();
 
-            ui.add(
-                egui::Slider::new(&mut state.godray_strength, 0.0..=2.0)
-                    .text("Strength")
-            );
-            ui.add(
-                egui::Slider::new(&mut state.godray_exposure, 0.0..=2.0)
-                    .text("Exposure")
-            );
-            ui.add(
-                egui::Slider::new(&mut state.godray_decay, 0.8..=1.0)
-                    .text("Decay")
-            );
+            ui.add(egui::Slider::new(&mut state.godray_strength, 0.0..=2.0).text("Strength"));
+            ui.add(egui::Slider::new(&mut state.godray_exposure, 0.0..=2.0).text("Exposure"));
+            ui.add(egui::Slider::new(&mut state.godray_decay, 0.8..=1.0).text("Decay"));
 
             ui.add_space(5.0);
             ui.label("Debug Mode:");
@@ -805,6 +778,10 @@ fn render_performance_ui(
 
             ui.add_space(10.0);
             ui.label("Monitor: ON");
-            ui.label(RichText::new("Tracking all framebuffer render passes").size(10.0).italics());
+            ui.label(
+                RichText::new("Tracking all framebuffer render passes")
+                    .size(10.0)
+                    .italics(),
+            );
         });
 }

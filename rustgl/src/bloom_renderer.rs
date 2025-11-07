@@ -1,7 +1,7 @@
 use crate::framebuffer::Framebuffer;
 use crate::mesh::Mesh;
-use crate::shader::Shader;
 use crate::performance_monitor::PerformanceMonitor;
+use crate::shader::Shader;
 use gl::types::*;
 
 pub struct BloomRenderer {
@@ -84,7 +84,13 @@ impl BloomRenderer {
 
         if enabled {
             // Passes 2-5: Apply bloom effect
-            self.apply_bloom(threshold, strength, window_width, window_height, perf_monitor);
+            self.apply_bloom(
+                threshold,
+                strength,
+                window_width,
+                window_height,
+                perf_monitor,
+            );
         } else {
             // Just render scene without bloom
             self.render_passthrough(window_width, window_height, perf_monitor);
@@ -92,7 +98,14 @@ impl BloomRenderer {
     }
 
     /// Apply the full bloom pipeline (bright pass + blur + composite)
-    fn apply_bloom(&mut self, threshold: f32, strength: f32, window_width: i32, window_height: i32, perf_monitor: &mut PerformanceMonitor) {
+    fn apply_bloom(
+        &mut self,
+        threshold: f32,
+        strength: f32,
+        window_width: i32,
+        window_height: i32,
+        perf_monitor: &mut PerformanceMonitor,
+    ) {
         // Pass 2: Extract bright areas
         perf_monitor.begin("2. Bloom Bright Pass");
         self.bright_pass_fbo.bind();
@@ -175,7 +188,12 @@ impl BloomRenderer {
     }
 
     /// Render scene without bloom
-    fn render_passthrough(&self, window_width: i32, window_height: i32, perf_monitor: &mut PerformanceMonitor) {
+    fn render_passthrough(
+        &self,
+        window_width: i32,
+        window_height: i32,
+        perf_monitor: &mut PerformanceMonitor,
+    ) {
         perf_monitor.begin("2. Passthrough (No Bloom)");
         self.composite_fbo.bind();
         unsafe {

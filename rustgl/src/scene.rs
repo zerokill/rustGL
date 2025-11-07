@@ -9,7 +9,7 @@ use nalgebra_glm as glm;
 /// Tags for identifying special scene objects
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SceneObjectTag {
-    GodraySource,  // The light source for godray effect
+    GodraySource, // The light source for godray effect
 }
 
 pub struct SceneObject {
@@ -95,8 +95,7 @@ impl Scene {
 
     /// Find the index of the first object with a specific tag
     pub fn find_object_by_tag(&self, tag: SceneObjectTag) -> Option<usize> {
-        self.objects.iter()
-            .position(|obj| obj.has_tag(tag))
+        self.objects.iter().position(|obj| obj.has_tag(tag))
     }
 
     /// Tag a specific object by index
@@ -122,22 +121,28 @@ impl Scene {
         });
     }
 
-    pub fn render(&self, shader: &Shader, view: &glm::Mat4, projection: &glm::Mat4, skybox_enabled: bool) {
+    pub fn render(
+        &self,
+        shader: &Shader,
+        view: &glm::Mat4,
+        projection: &glm::Mat4,
+        skybox_enabled: bool,
+    ) {
         // Render skybox first (if present and enabled)
         if skybox_enabled {
             if let Some(skybox) = &self.skybox {
-            unsafe {
-                gl::DepthFunc(gl::LEQUAL);
+                unsafe {
+                    gl::DepthFunc(gl::LEQUAL);
 
-                skybox.shader.use_program();
-                skybox.shader.set_mat4("view", view);
-                skybox.shader.set_mat4("projection", projection);
-                skybox.texture.bind(0);
-                skybox.shader.set_int("skybox", 0);
-                skybox.mesh.draw();
+                    skybox.shader.use_program();
+                    skybox.shader.set_mat4("view", view);
+                    skybox.shader.set_mat4("projection", projection);
+                    skybox.texture.bind(0);
+                    skybox.shader.set_int("skybox", 0);
+                    skybox.mesh.draw();
 
-                gl::DepthFunc(gl::LESS);
-            }
+                    gl::DepthFunc(gl::LESS);
+                }
             }
         }
 
