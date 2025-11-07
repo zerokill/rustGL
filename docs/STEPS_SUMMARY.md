@@ -392,6 +392,16 @@ Measure and optimize frame timing.
 - Target consistent 60 FPS
 - **Challenge**: Add graphics quality settings
 
+### Step 42a: Dual-Filtering Bloom (TODO)
+Optimize bloom using downsampling/upsampling pyramid.
+- **Goal**: Reduce bloom cost by 75%
+- Understand dual-kawase blur technique
+- Create mipmap pyramid (3-4 downsample passes)
+- Upsample with additive blending
+- Replace ping-pong Gaussian blur
+- Achieve wider blur with fewer samples
+- **Challenge**: Compare quality vs traditional Gaussian
+
 ---
 
 ## Completion
