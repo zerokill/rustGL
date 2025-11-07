@@ -1,5 +1,3 @@
-use std::f32::consts::PI;
-
 pub struct PerlinNoise {
     permutation: [u8; 512],
 }
@@ -85,5 +83,44 @@ impl PerlinNoise {
 
     pub fn noise2d_01(&self, x: f32, y: f32) -> f32 {
         (self.noise2d(x, y) + 1.0) * 0.5
+    }
+
+    pub fn fractal_noise(
+        &self,
+        x: f32,
+        y: f32,
+        octaves: u32,
+        persistence: f32,
+        lacunarity: f32,
+    ) -> f32 {
+        let mut total = 0.0;
+        let mut amplitude = 1.0;
+        let mut frequency = 1.0;
+        let mut max_value = 0.0;
+
+        for _ in 0..octaves {
+            // Sample noise at this frequency
+            total += self.noise2d(x * frequency, y * frequency) * amplitude;
+
+            // Track maximum possible value for normalization
+            max_value += amplitude;
+
+            // Decreased amplitude and increase frequency for next octave
+            amplitude *= persistence;
+            frequency *= lacunarity;
+        }
+
+        total / max_value
+    }
+
+    pub fn fractal_noise_01(
+        &self,
+        x: f32,
+        y: f32,
+        octaves: u32,
+        persistence: f32,
+        lacunarity: f32,
+    ) -> f32 {
+        (self.fractal_noise(x, y, octaves, persistence, lacunarity) + 1.0) * 0.5
     }
 }

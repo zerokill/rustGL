@@ -169,8 +169,12 @@ fn main() {
     let perlin = PerlinNoise::new(42);
 
     let noise_scale = 0.5;
-    let noise_plane = Mesh::noise_test_plane(
-        &|x, y| perlin.noise2d(x, y),
+    let octaves = 5;
+    let persistence = 0.5;
+    let lacunarity = 2.0;
+
+    let fractal_terrain = Mesh::noise_test_plane(
+        &|x, y| perlin.fractal_noise(x, y, octaves, persistence, lacunarity),
         100,
         noise_scale,
     );
@@ -269,7 +273,7 @@ fn main() {
     ));
 
     scene.add_object(
-        noise_plane,
+        fractal_terrain,
         Material::matte(glm::vec3(0.5, 0.7, 0.3)),
         Transform::from_position_scale(
             glm::vec3(0.0, 0.0, 0.0), // Center position
