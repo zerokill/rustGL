@@ -14,6 +14,7 @@ mod scene;
 mod shader;
 mod texture;
 mod transform;
+mod terrain;
 
 use bloom_renderer::BloomRenderer;
 use camera::{Camera, CameraMovement};
@@ -32,6 +33,7 @@ use shader::Shader;
 use std::time::Instant;
 use texture::Texture;
 use transform::Transform;
+use terrain::Terrain;
 
 // Constants for magic numbers
 const CAMERA_LOOK_SPEED: f32 = 250.0; // degrees per second
@@ -169,16 +171,18 @@ fn main() {
 
     let perlin = PerlinNoise::new(42);
 
-    let noise_scale = 0.5;
-    let octaves = 5;
-    let persistence = 0.5;
-    let lacunarity = 2.0;
+    // Create terrain with parameters
+    let mut terrain = Terrain::with_defaults(100.0, 100.0, 128);
+    terrain.height_scale = 10.0;  // Dramatic elevation
+    terrain.generate();
 
-    let fractal_terrain = Mesh::noise_test_plane(
-        &|x, y| perlin.fractal_noise(x, y, octaves, persistence, lacunarity),
-        100,
-        noise_scale,
-    );
+    // Test terrain height sampling
+    println!("=== Terrain Height Sampling Tests ===");
+    println!("Terrain height at (0, 0): {:?}", terrain.sample_height(0.0, 0.0));
+    println!("Terrain height at (10, 10): {:?}", terrain.sample_height(10.0, 10.0));
+    println!("Terrain height at (-25, 30): {:?}", terrain.sample_height(-25.0, 30.0));
+    println!("Terrain height outside bounds: {:?}", terrain.sample_height(1000.0, 1000.0));
+    println!("======================================\n");
 
     let mut scene = Scene::new();
 
@@ -273,13 +277,11 @@ fn main() {
         glm::vec3(10.0, 10.0, 10.0), // Very bright white light
     ));
 
+    // Add terrain to scene
     scene.add_object(
-        fractal_terrain,
-        Material::matte(glm::vec3(0.5, 0.7, 0.3)),
-        Transform::from_position_scale(
-            glm::vec3(0.0, 0.0, 0.0), // Center position
-            glm::vec3(5.0, 2.0, 5.0), // Scale
-        ),
+        terrain.create_mesh(), // Generate a mesh on demand
+        Material::matte(glm::vec3(0.4, 0.6, 0.3)),
+        Transform::from_position(glm::vec3(0.0, 0.0, 0.0))
     );
 
     let mut camera = Camera::default();
