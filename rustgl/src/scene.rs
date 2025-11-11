@@ -19,6 +19,13 @@ pub struct SceneObject {
     pub tags: Vec<SceneObjectTag>,
 }
 
+impl SceneObject {
+    /// Replace the mesh with a new one
+    pub fn replace_mesh(&mut self, new_mesh: Mesh) {
+        self.mesh = new_mesh;
+    }
+}
+
 pub struct Skybox {
     pub mesh: Mesh,
     pub shader: Shader,

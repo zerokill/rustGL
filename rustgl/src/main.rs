@@ -54,6 +54,15 @@ struct AppState {
     godray_exposure: f32,
     godray_decay: f32,
     godray_debug_mode: u8, // 0 = off, 1 = occlusion, 2 = radial blur, 3 = rays only
+
+    // Terrain parameters
+    terrain_octaves: u32,
+    terrain_persistence: f32,
+    terrain_lacunarity: f32,
+    terrain_noise_scale: f32,
+    terrain_height_scale: f32,
+    terrain_needs_regeneration: bool,
+    terrain_index: Option<usize>, // Track terrain object in scene
 }
 
 impl AppState {
@@ -71,6 +80,15 @@ impl AppState {
             godray_exposure: 0.5,
             godray_decay: 0.97,
             godray_debug_mode: 0,
+
+            // Terrain defaults
+            terrain_octaves: 4,
+            terrain_persistence: 0.5,
+            terrain_lacunarity: 2.0,
+            terrain_noise_scale: 0.15,
+            terrain_height_scale: 10.0,
+            terrain_needs_regeneration: false,
+            terrain_index: None,
         }
     }
 }
@@ -171,9 +189,13 @@ fn main() {
 
     let perlin = PerlinNoise::new(42);
 
-    // Create terrain with parameters
+    // Create terrain with parameters from state
     let mut terrain = Terrain::with_defaults(100.0, 100.0, 128);
-    terrain.height_scale = 10.0;  // Dramatic elevation
+    terrain.octaves = state.terrain_octaves;
+    terrain.persistence = state.terrain_persistence;
+    terrain.lacunarity = state.terrain_lacunarity;
+    terrain.noise_scale = state.terrain_noise_scale;
+    terrain.height_scale = state.terrain_height_scale;
     terrain.generate();
 
     // Test terrain height sampling
@@ -273,16 +295,18 @@ fn main() {
 
     // Add orbiting light (attached to sphere)
     scene.add_light(Light::medium_range(
-        glm::vec3(6.0, 2.0, 0.0),
+        glm::vec3(6.0, 12.0, 0.0),
         glm::vec3(10.0, 10.0, 10.0), // Very bright white light
     ));
 
-    // Add terrain to scene
+    // Add terrain to scene and track its index
+    let terrain_index = scene.object_count();
     scene.add_object(
         terrain.create_mesh(), // Generate a mesh on demand
         Material::matte(glm::vec3(0.4, 0.6, 0.3)),
         Transform::from_position(glm::vec3(0.0, 0.0, 0.0))
     );
+    state.terrain_index = Some(terrain_index);
 
     let mut camera = Camera::default();
 
@@ -391,6 +415,25 @@ fn main() {
 
         // Update performance monitor (collect GPU timer results)
         perf_monitor.update();
+
+        // Check if terrain needs regeneration
+        if state.terrain_needs_regeneration {
+            terrain.octaves = state.terrain_octaves;
+            terrain.persistence = state.terrain_persistence;
+            terrain.lacunarity = state.terrain_lacunarity;
+            terrain.noise_scale = state.terrain_noise_scale;
+            terrain.height_scale = state.terrain_height_scale;
+            terrain.regenerate();
+
+            // Replace terrain mesh in scene
+            if let Some(terrain_idx) = state.terrain_index {
+                if let Some(obj) = scene.get_object_mut(terrain_idx) {
+                    obj.replace_mesh(terrain.create_mesh());
+                }
+            }
+
+            state.terrain_needs_regeneration = false;
+        }
 
         egui_ctx.begin_frame(egui_input.input.take());
         render_ui(&egui_ctx, &mut state, delta_time, frame_count, &camera);
@@ -571,7 +614,7 @@ fn update(delta_time: f32, time: &mut f32, scene: &mut Scene) {
     // Update orbiting light sphere position
     let orbit_radius = 6.0;
     let orbit_speed = 0.5; // radians per second
-    let orbit_height = 2.0;
+    let orbit_height = 12.0;
     let angle = *time * orbit_speed;
 
     let light_pos = glm::vec3(
@@ -633,6 +676,7 @@ fn render_ui(
     // Main debug panel
     egui::Window::new("🎮 RustGL Debug Panel")
         .default_width(300.0)
+        .default_open(false)
         .show(egui_ctx, |ui| {
             ui.heading("Performance");
             ui.separator();
@@ -697,6 +741,65 @@ fn render_ui(
             ui.label("QE - Move up/down");
             ui.label("Arrows - Look around");
             ui.label("ESC - Quit");
+        });
+
+    // Terrain controls window
+    egui::Window::new("🗻 Terrain Controls")
+        .default_width(300.0)
+        .default_open(false)
+        .show(egui_ctx, |ui| {
+            ui.heading("Procedural Generation");
+            ui.separator();
+
+            let mut changed = false;
+
+            changed |= ui.add(egui::Slider::new(&mut state.terrain_octaves, 1..=8).text("Octaves")).changed();
+            ui.label("Number of noise layers (more = more detail)");
+
+            ui.add_space(5.0);
+
+            changed |= ui.add(egui::Slider::new(&mut state.terrain_persistence, 0.1..=0.9).text("Persistence")).changed();
+            ui.label("Amplitude falloff per octave");
+
+            ui.add_space(5.0);
+
+            changed |= ui.add(egui::Slider::new(&mut state.terrain_lacunarity, 1.0..=4.0).text("Lacunarity")).changed();
+            ui.label("Frequency multiplier per octave");
+
+            ui.add_space(5.0);
+
+            changed |= ui.add(egui::Slider::new(&mut state.terrain_noise_scale, 0.05..=1.0).text("Noise Scale")).changed();
+            ui.label("Overall frequency (lower = larger features)");
+
+            ui.add_space(5.0);
+
+            changed |= ui.add(egui::Slider::new(&mut state.terrain_height_scale, 1.0..=30.0).text("Height Scale")).changed();
+            ui.label("Vertical exaggeration");
+
+            ui.add_space(10.0);
+
+            if changed {
+                state.terrain_needs_regeneration = true;
+            }
+
+            if state.terrain_needs_regeneration {
+                ui.colored_label(egui::Color32::YELLOW, "⚠ Changes pending - click Regenerate");
+            }
+
+            if ui.button("🔄 Regenerate Terrain").clicked() {
+                state.terrain_needs_regeneration = true;
+            }
+
+            ui.add_space(5.0);
+
+            if ui.button("↺ Reset to Defaults").clicked() {
+                state.terrain_octaves = 4;
+                state.terrain_persistence = 0.5;
+                state.terrain_lacunarity = 2.0;
+                state.terrain_noise_scale = 0.15;
+                state.terrain_height_scale = 10.0;
+                state.terrain_needs_regeneration = true;
+            }
         });
 }
 
