@@ -60,16 +60,12 @@ impl Terrain {
     // Create terrain with sensible defaults
     pub fn with_defaults(width: f32, depth: f32, resolution: usize) -> Self {
         Self::new(
-            width,
-            depth,
-            resolution,
-            resolution,
-            42,          // seed
-            5,           // octaves
-            0.5,         // persistence
-            2.0,         // lacunarity
-            0.3,         // noise_scale
-            1.0,         // height_scale
+            width, depth, resolution, resolution, 42,  // seed
+            5,   // octaves
+            0.5, // persistence
+            2.0, // lacunarity
+            0.3, // noise_scale
+            1.0, // height_scale
         )
     }
 
@@ -144,7 +140,6 @@ impl Terrain {
                     normal,
                     [u, v],
                 ));
-
             }
         }
 
@@ -222,7 +217,13 @@ impl Terrain {
     }
 
     /// Update noise parameters and regenerate
-    pub fn set_noise_params(&mut self, octaves: u32, persistence: f32, lacunarity: f32, scale: f32) {
+    pub fn set_noise_params(
+        &mut self,
+        octaves: u32,
+        persistence: f32,
+        lacunarity: f32,
+        scale: f32,
+    ) {
         self.octaves = octaves;
         self.persistence = persistence;
         self.lacunarity = lacunarity;

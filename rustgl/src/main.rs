@@ -12,9 +12,9 @@ mod noise;
 mod performance_monitor;
 mod scene;
 mod shader;
+mod terrain;
 mod texture;
 mod transform;
-mod terrain;
 
 use bloom_renderer::BloomRenderer;
 use camera::{Camera, CameraMovement};
@@ -31,9 +31,9 @@ use performance_monitor::PerformanceMonitor;
 use scene::{Scene, SceneObjectTag};
 use shader::Shader;
 use std::time::Instant;
+use terrain::Terrain;
 use texture::Texture;
 use transform::Transform;
-use terrain::Terrain;
 
 // Constants for magic numbers
 const CAMERA_LOOK_SPEED: f32 = 250.0; // degrees per second
@@ -200,10 +200,22 @@ fn main() {
 
     // Test terrain height sampling
     println!("=== Terrain Height Sampling Tests ===");
-    println!("Terrain height at (0, 0): {:?}", terrain.sample_height(0.0, 0.0));
-    println!("Terrain height at (10, 10): {:?}", terrain.sample_height(10.0, 10.0));
-    println!("Terrain height at (-25, 30): {:?}", terrain.sample_height(-25.0, 30.0));
-    println!("Terrain height outside bounds: {:?}", terrain.sample_height(1000.0, 1000.0));
+    println!(
+        "Terrain height at (0, 0): {:?}",
+        terrain.sample_height(0.0, 0.0)
+    );
+    println!(
+        "Terrain height at (10, 10): {:?}",
+        terrain.sample_height(10.0, 10.0)
+    );
+    println!(
+        "Terrain height at (-25, 30): {:?}",
+        terrain.sample_height(-25.0, 30.0)
+    );
+    println!(
+        "Terrain height outside bounds: {:?}",
+        terrain.sample_height(1000.0, 1000.0)
+    );
     println!("======================================\n");
 
     let mut scene = Scene::new();
@@ -304,7 +316,7 @@ fn main() {
     scene.add_object(
         terrain.create_mesh(), // Generate a mesh on demand
         Material::matte(glm::vec3(0.4, 0.6, 0.3)),
-        Transform::from_position(glm::vec3(0.0, 0.0, 0.0))
+        Transform::from_position(glm::vec3(0.0, 0.0, 0.0)),
     );
     state.terrain_index = Some(terrain_index);
 
@@ -753,27 +765,46 @@ fn render_ui(
 
             let mut changed = false;
 
-            changed |= ui.add(egui::Slider::new(&mut state.terrain_octaves, 1..=8).text("Octaves")).changed();
+            changed |= ui
+                .add(egui::Slider::new(&mut state.terrain_octaves, 1..=8).text("Octaves"))
+                .changed();
             ui.label("Number of noise layers (more = more detail)");
 
             ui.add_space(5.0);
 
-            changed |= ui.add(egui::Slider::new(&mut state.terrain_persistence, 0.1..=0.9).text("Persistence")).changed();
+            changed |= ui
+                .add(
+                    egui::Slider::new(&mut state.terrain_persistence, 0.1..=0.9)
+                        .text("Persistence"),
+                )
+                .changed();
             ui.label("Amplitude falloff per octave");
 
             ui.add_space(5.0);
 
-            changed |= ui.add(egui::Slider::new(&mut state.terrain_lacunarity, 1.0..=4.0).text("Lacunarity")).changed();
+            changed |= ui
+                .add(egui::Slider::new(&mut state.terrain_lacunarity, 1.0..=4.0).text("Lacunarity"))
+                .changed();
             ui.label("Frequency multiplier per octave");
 
             ui.add_space(5.0);
 
-            changed |= ui.add(egui::Slider::new(&mut state.terrain_noise_scale, 0.05..=1.0).text("Noise Scale")).changed();
+            changed |= ui
+                .add(
+                    egui::Slider::new(&mut state.terrain_noise_scale, 0.05..=1.0)
+                        .text("Noise Scale"),
+                )
+                .changed();
             ui.label("Overall frequency (lower = larger features)");
 
             ui.add_space(5.0);
 
-            changed |= ui.add(egui::Slider::new(&mut state.terrain_height_scale, 1.0..=30.0).text("Height Scale")).changed();
+            changed |= ui
+                .add(
+                    egui::Slider::new(&mut state.terrain_height_scale, 1.0..=30.0)
+                        .text("Height Scale"),
+                )
+                .changed();
             ui.label("Vertical exaggeration");
 
             ui.add_space(10.0);
@@ -783,7 +814,10 @@ fn render_ui(
             }
 
             if state.terrain_needs_regeneration {
-                ui.colored_label(egui::Color32::YELLOW, "⚠ Changes pending - click Regenerate");
+                ui.colored_label(
+                    egui::Color32::YELLOW,
+                    "⚠ Changes pending - click Regenerate",
+                );
             }
 
             if ui.button("🔄 Regenerate Terrain").clicked() {
